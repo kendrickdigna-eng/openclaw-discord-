@@ -352,12 +352,16 @@
                   <i class="fas fa-info-circle"></i> 心跳间隔决定 Agent 自动检查任务的频率
                 </div>
                 
-                <!-- HEARTBEAT.md 文档 -->
-                <div v-if="agentDetail.heartbeatDoc" style="margin-top:24px">
-                  <div style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px">
-                    <i class="fas fa-file-alt"></i> HEARTBEAT.md
+                <!-- HEARTBEAT.md 文档（可编辑） -->
+                <div v-if="agentDetail.heartbeatDoc !== undefined" style="margin-top:24px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div style="font-size:14px;font-weight:600;color:#e0e0e0">
+                      <i class="fas fa-file-alt"></i> HEARTBEAT.md
+                    </div>
+                    <el-button size="small" type="primary" @click="saveHeartbeatDoc"><i class="fas fa-save"></i> 保存</el-button>
                   </div>
-                  <pre style="background:#141414;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;font-size:12px;color:#aaa;white-space:pre-wrap">{{ agentDetail.heartbeatDoc }}</pre>
+                  <el-input v-model="agentDetail.heartbeatDoc" type="textarea" :rows="10" 
+                    style="--el-input-bg-color:#141414;--el-input-border-color:#2a2a4a;--el-input-text-color:#aaa;font-family:monospace" />
                 </div>
               </div>
             </el-tab-pane>
@@ -1163,6 +1167,17 @@ const app = createApp({
       } catch (e) { ElMessage.error(e.message); }
     }
 
+    async function saveHeartbeatDoc() {
+      try {
+        // 使用文件编辑API保存HEARTBEAT.md
+        await api(`/agents/${currentAgentId.value}/files/HEARTBEAT.md`, { 
+          method: 'PUT', 
+          body: JSON.stringify({ content: agentDetail.value.heartbeatDoc }) 
+        });
+        ElMessage.success('HEARTBEAT.md 已保存');
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
     async function updateDetailBinding() {
       if (!newDetailBinding.value) return;
       try {
@@ -1391,7 +1406,7 @@ const app = createApp({
       labels, guildLabels, channelLabels,
       // Agent Detail
       currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding, newSkillName,
-      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, updateDetailBinding, enableSkill, disableSkill,
+      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, saveHeartbeatDoc, updateDetailBinding, enableSkill, disableSkill,
       // Editor
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
