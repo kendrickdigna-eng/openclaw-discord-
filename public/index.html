@@ -1124,7 +1124,7 @@ const app = createApp({
 
     return {
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
-      agents, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      agents, agentStatus, channelGroups, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
@@ -1136,7 +1136,7 @@ const app = createApp({
       addBindingDialog, newBinding,
       discordAccountCount, discordAccountNames, bindingByGuild, unboundAccounts, hooksList, pageTitle,
       maskToken, displayName, saveGuildLabel, saveChannelLabel,
-      login, logout, loadAll,
+      login, logout, loadAll, getAgentStatus,
       showCreateAgent, createAgent, deleteAgent, editAgent,
       loadFile, saveFile,
       saveDiscordGlobal, openAddAccount, createAccount, deleteAccount, updateAccount,
