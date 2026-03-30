@@ -1151,7 +1151,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l, g, st] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, g, st, sk] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -1161,11 +1161,14 @@ const app = createApp({
           api('/settings').catch(() => ({})),
           api('/labels').catch(() => ({guilds:{},channels:{}})),
           api('/discord/channels').catch(() => ({guilds:[]})),
-          api('/agents/status').catch(() => ({agents:[]}))
+          api('/agents/status').catch(() => ({agents:[]})),
+          api('/skills').catch(() => ({skills:[], summary:{}}))
         ]);
         agents.value = a || [];
         agentStatus.value = st.agents || [];
         guildGroups.value = g.guilds || [];
+        allSkills.value = sk.skills || [];
+        skillsSummary.value = sk.summary || {};
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
