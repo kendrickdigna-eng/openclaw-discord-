@@ -476,6 +476,14 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
     const bindings = config.bindings || [];
     const discordAccounts = config.channels?.discord?.accounts || {};
     
+    // 读取labels
+    let labels = { guilds: {}, channels: {} };
+    if (fs.existsSync(LABELS_FILE)) {
+      try {
+        labels = JSON.parse(fs.readFileSync(LABELS_FILE, 'utf8'));
+      } catch {}
+    }
+    
     // 辅助函数：获取Agent详情
     function getAgentDetails(agentId) {
       let displayName = agentId;
@@ -514,9 +522,11 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
       const accGuilds = acc.guilds || {};
       for (const [guildId, guild] of Object.entries(accGuilds)) {
         if (!guilds[guildId]) {
+          // 使用label或ID
+          const guildName = labels.guilds?.[guildId] || guild.name || `服务器 ${guildId.slice(-6)}`;
           guilds[guildId] = {
             guildId,
-            guildName: guild.name || guildId,
+            guildName,
             channels: {}
           };
         }
@@ -525,9 +535,11 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
         const channels = guild.channels || {};
         for (const [channelId, channelConfig] of Object.entries(channels)) {
           if (!guilds[guildId].channels[channelId]) {
+            // 使用label或ID
+            const channelName = labels.channels?.[channelId] || channelConfig.name || `频道 ${channelId.slice(-6)}`;
             guilds[guildId].channels[channelId] = {
               channelId,
-              channelName: channelConfig.name || channelId,
+              channelName,
               agents: []
             };
           }
