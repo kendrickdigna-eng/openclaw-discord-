@@ -14,6 +14,11 @@ const DATA_DIR = __dirname;
 const GROUPS_FILE = path.join(DATA_DIR, 'data', 'groups.json');
 const LABELS_FILE = path.join(DATA_DIR, 'data', 'labels.json');
 
+// 写入配置
+function writeConfig(config) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n', 'utf8');
+}
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -240,6 +245,174 @@ app.get('/api/agents/status', requireAuth, (req, res) => {
     res.json({ agents: agentStatus, defaultAgentId: status.heartbeat?.defaultAgentId });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ Agent详情 ============
+app.get('/api/agents/:id/info', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const config = readConfig();
+    
+    // 获取workspace路径
+    let wsPath = path.join(WORKSPACES_DIR, `workspace-${id}`);
+    const entry = (config.agents?.list || []).find(a => (typeof a === 'string' ? a : a.id) === id);
+    if (typeof entry === 'object' && entry.workspace) wsPath = entry.workspace;
+    
+    // 读取IDENTITY.md获取显示名称
+    let displayName = id;
+    const identityPath = path.join(wsPath, 'IDENTITY.md');
+    if (fs.existsSync(identityPath)) {
+      const content = fs.readFileSync(identityPath, 'utf8');
+      const match = content.match(/\*\*Name:\*\*\s*(.+)/);
+      if (match) displayName = match[1].trim();
+    }
+    
+    // 从sessions获取技能列表
+    let skills = [];
+    const sessionsPath = path.join(CONFIG_PATH, '../agents', id, 'sessions/sessions.json');
+    if (fs.existsSync(sessionsPath)) {
+      try {
+        const sessions = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
+        const firstKey = Object.keys(sessions)[0];
+        if (firstKey && sessions[firstKey].skillsSnapshot?.skills) {
+          skills = sessions[firstKey].skillsSnapshot.skills.map(s => s.name || s);
+        }
+      } catch {}
+    }
+    
+    // 获取Discord账号信息
+    let discordAccount = null;
+    const discordAccounts = config.channels?.discord?.accounts || {};
+    for (const [accName, acc] of Object.entries(discordAccounts)) {
+      if (accName === id) {
+        discordAccount = { name: accName, guilds: Object.keys(acc.guilds || {}) };
+        break;
+      }
+    }
+    
+    // 获取绑定信息
+    const binding = (config.bindings || []).find(b => b.agentId === id);
+    
+    // 获取心跳状态
+    const heartbeat = (config.heartbeat?.agents || []).find(a => a.agentId === id);
+    
+    res.json({
+      id,
+      displayName,
+      workspace: wsPath,
+      skills,
+      discordAccount,
+      binding,
+      heartbeat: heartbeat || { enabled: false }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ Agent会话 ============
+app.get('/api/agents/:id/sessions', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const output = execSync(`openclaw sessions --agent ${id} --json 2>&1`, { timeout: 10000 });
+    res.json(JSON.parse(output));
+  } catch (e) {
+    res.json({ stores: [] });
+  }
+});
+
+app.post('/api/agents/:id/sessions/reset', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const sessionsPath = path.join(CONFIG_PATH, '../agents', id, 'sessions/sessions.json');
+    if (fs.existsSync(sessionsPath)) {
+      // 备份后清空
+      const backupPath = sessionsPath + '.bak.' + Date.now();
+      fs.copyFileSync(sessionsPath, backupPath);
+      fs.writeFileSync(sessionsPath, '{}');
+      res.json({ success: true, message: '会话已重置' });
+    } else {
+      res.json({ success: true, message: '无会话文件' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ Agent心跳 ============
+app.get('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const config = readConfig();
+    const heartbeat = (config.heartbeat?.agents || []).find(a => a.agentId === id);
+    res.json(heartbeat || { agentId: id, enabled: false, every: 'disabled' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.put('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled, every } = req.body;
+    const config = readConfig();
+    if (!config.heartbeat) config.heartbeat = { agents: [] };
+    if (!config.heartbeat.agents) config.heartbeat.agents = [];
+    
+    const existing = config.heartbeat.agents.findIndex(a => a.agentId === id);
+    const entry = {
+      agentId: id,
+      enabled: enabled === true,
+      every: enabled ? (every || '30m') : 'disabled',
+      everyMs: enabled ? parseInterval(every || '30m') : null
+    };
+    
+    if (existing >= 0) {
+      config.heartbeat.agents[existing] = entry;
+    } else {
+      config.heartbeat.agents.push(entry);
+    }
+    
+    writeConfig(config);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function parseInterval(str) {
+  const match = str.match(/^(\d+)(m|h|d)$/);
+  if (!match) return 1800000;
+  const num = parseInt(match[1]);
+  const unit = match[2];
+  if (unit === 'm') return num * 60000;
+  if (unit === 'h') return num * 3600000;
+  if (unit === 'd') return num * 86400000;
+  return 1800000;
+}
+
+// ============ Agent日志 ============
+app.get('/api/agents/:id/logs', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const lines = parseInt(req.query.lines) || 100;
+    const logDir = path.join(CONFIG_PATH, '../agents', id, 'logs');
+    
+    if (!fs.existsSync(logDir)) {
+      return res.json({ logs: [], message: '暂无日志' });
+    }
+    
+    const files = fs.readdirSync(logDir).filter(f => f.endsWith('.log')).sort().reverse();
+    if (files.length === 0) {
+      return res.json({ logs: [], message: '暂无日志文件' });
+    }
+    
+    const latestLog = path.join(logDir, files[0]);
+    const content = execSync(`tail -n ${lines} "${latestLog}"`, { encoding: 'utf8' });
+    res.json({ logs: content.split('\n'), file: files[0] });
+  } catch (e) {
+    res.json({ logs: [], error: e.message });
   }
 });
 
