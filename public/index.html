@@ -1043,7 +1043,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l, st] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, st, sys, sk] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -1053,8 +1053,6 @@ const app = createApp({
           api('/settings').catch(() => ({})),
           api('/labels').catch(() => ({guilds:{},channels:{}})),
           api('/agents/status').catch(() => []),
-          api('/system/status').catch(() => null),
-          api('/skills').catch(() => []),
           api('/system/status').catch(() => null),
           api('/skills').catch(() => [])
         ]);
