@@ -30,9 +30,23 @@
     .topbar-right { display: flex; align-items: center; gap: 12px; }
     .toggle-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; padding: 4px; }
     .toggle-btn:hover { color: #fff; }
-    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #0f0f1a; }
+    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #0f0f1a; position: relative; }
+    .page-transition { animation: fadeSlideIn 0.3s ease; }
+    @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    .sidebar-overlay.show { display: block; }
     .page-title { font-size: 22px; font-weight: 600; margin-bottom: 20px; color: #e0e0e0; }
-    .card { background: #1d1d2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; }
+    .card { background: #1d1d2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; transition: border-color 0.2s, box-shadow 0.2s; }
+    .card:hover { border-color: #3b3b6b; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .stat-card { border-radius: 12px; padding: 20px; color: #fff; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .stat-card .stat-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 48px; opacity: 0.15; }
+    .stat-card .stat-label { font-size: 13px; opacity: 0.8; margin-bottom: 8px; }
+    .stat-card .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-card.agents { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); }
+    .stat-card.gateway { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
+    .stat-card.discord { background: linear-gradient(135deg, #4a148c 0%, #6a1b9a 100%); }
+    .stat-card.bindings { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
     .card-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e0e0e0; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-running { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
@@ -134,6 +148,9 @@
       </div>
     </div>
 
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" :class="{ show: !sidebarCollapsed && windowWidth < 769 }" @click="sidebarCollapsed=true"></div>
+
     <!-- Main -->
     <div class="main-content">
       <div class="topbar">
@@ -149,27 +166,31 @@
       <div class="content-area">
 
         <!-- ==================== Dashboard ==================== -->
-        <div v-if="currentPage==='dashboard'">
+        <div class="page-transition" v-if="currentPage==='dashboard'">
           <h2 class="page-title">📊 仪表盘</h2>
           <el-row :gutter="16">
-            <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fas fa-robot"></i> Agent</div>
-              <div style="font-size:36px;font-weight:700;color:#4fc3f7">{{ agents.length }}</div>
+            <el-col :xs="12" :sm="6"><div class="stat-card agents">
+              <div class="stat-icon"><i class="fas fa-robot"></i></div>
+              <div class="stat-label">Agent</div>
+              <div class="stat-value">{{ agents.length }}</div>
             </div></el-col>
-            <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fas fa-server"></i> Gateway</div>
-              <div style="display:flex;align-items:center;gap:10px">
+            <el-col :xs="12" :sm="6"><div class="stat-card gateway">
+              <div class="stat-icon"><i class="fas fa-server"></i></div>
+              <div class="stat-label">Gateway</div>
+              <div class="stat-value" style="display:flex;align-items:center;gap:8px;font-size:20px">
                 <span class="status-dot" :class="'status-'+gatewayStatus"></span>
-                <span style="font-size:18px;font-weight:600" :style="{color: gatewayStatus==='running'?'#4caf50':gatewayStatus==='stopped'?'#f44336':'#ff9800'}">{{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}</span>
+                {{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}
               </div>
             </div></el-col>
-            <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fab fa-discord"></i> Discord 账号</div>
-              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ discordAccountCount }}</div>
+            <el-col :xs="12" :sm="6"><div class="stat-card discord">
+              <div class="stat-icon"><i class="fab fa-discord"></i></div>
+              <div class="stat-label">Discord 账号</div>
+              <div class="stat-value">{{ discordAccountCount }}</div>
             </div></el-col>
-            <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fas fa-link"></i> 绑定</div>
-              <div style="font-size:36px;font-weight:700;color:#66bb6a">{{ bindings.length }}</div>
+            <el-col :xs="12" :sm="6"><div class="stat-card bindings">
+              <div class="stat-icon"><i class="fas fa-link"></i></div>
+              <div class="stat-label">绑定</div>
+              <div class="stat-value">{{ bindings.length }}</div>
             </div></el-col>
           </el-row>
           <div class="card">
@@ -187,7 +208,7 @@
         </div>
 
         <!-- ==================== Agents ==================== -->
-        <div v-if="currentPage==='agents'">
+        <div class="page-transition" v-if="currentPage==='agents'">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
             <h2 class="page-title" style="margin-bottom:0">🤖 Agent 管理</h2>
             <el-button type="primary" @click="showCreateAgent"><i class="fas fa-plus"></i> 创建 Agent</el-button>
@@ -223,7 +244,7 @@
         </div>
 
         <!-- ==================== File Editor ==================== -->
-        <div v-if="currentPage==='editor'">
+        <div class="page-transition" v-if="currentPage==='editor'">
           <h2 class="page-title">📝 文件编辑器</h2>
           <div class="card">
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
@@ -250,7 +271,7 @@
         </div>
 
         <!-- ==================== Discord ==================== -->
-        <div v-if="currentPage==='discord'">
+        <div class="page-transition" v-if="currentPage==='discord'">
           <h2 class="page-title">💬 Discord Bot 管理</h2>
 
           <!-- Global Settings -->
@@ -447,7 +468,7 @@
         </div>
 
         <!-- ==================== Bindings ==================== -->
-        <div v-if="currentPage==='bindings'">
+        <div class="page-transition" v-if="currentPage==='bindings'">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
             <h2 class="page-title" style="margin-bottom:0">🔗 绑定关系管理</h2>
             <el-button type="primary" @click="showAddBinding"><i class="fas fa-plus"></i> 添加绑定</el-button>
@@ -534,7 +555,7 @@
         </div>
 
         <!-- ==================== Hooks ==================== -->
-        <div v-if="currentPage==='hooks'">
+        <div class="page-transition" v-if="currentPage==='hooks'">
           <h2 class="page-title">🪝 Hooks 管理</h2>
           <div class="card">
             <div class="card-header"><i class="fas fa-cog"></i> Hooks 全局开关</div>
@@ -571,7 +592,7 @@
         </div>
 
         <!-- ==================== Gateway ==================== -->
-        <div v-if="currentPage==='gateway'">
+        <div class="page-transition" v-if="currentPage==='gateway'">
           <h2 class="page-title">🖥️ Gateway 管理</h2>
           <div class="card">
             <div class="card-header">
@@ -599,7 +620,7 @@
         </div>
 
         <!-- ==================== Settings ==================== -->
-        <div v-if="currentPage==='settings'">
+        <div class="page-transition" v-if="currentPage==='settings'">
           <h2 class="page-title">⚙️ 系统设置</h2>
 
           <!-- Session -->
@@ -666,6 +687,8 @@ const app = createApp({
     const loginError = ref('');
     const currentPage = ref('dashboard');
     const sidebarCollapsed = ref(false);
+    const windowWidth = ref(window.innerWidth);
+    window.addEventListener('resize', () => { windowWidth.value = window.innerWidth; if (window.innerWidth >= 769) sidebarCollapsed.value = false; });
 
     // Data
     const agents = ref([]);
@@ -1085,7 +1108,7 @@ const app = createApp({
     });
 
     return {
-      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
+      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed, windowWidth,
       agents, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       editorAgent, editorFile, editorContent, renderedMarkdown,
