@@ -802,6 +802,17 @@
 <script src="libs/element-plus.full.min.js"></script>
 <script src="libs/marked.min.js"></script>
 <script>
+// 全局错误捕获
+window.onerror = function(msg, url, line, col, error) {
+  alert('JS错误: ' + msg + ' @ ' + line + ':' + col);
+  console.error(error);
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  alert('Promise错误: ' + (e.reason?.message || e.reason));
+});
+if (!window.Vue) { alert('Vue加载失败！请检查网络'); }
+if (!window.ElementPlus) { alert('ElementPlus加载失败！请检查网络'); }
 const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 const { ElMessage, ElMessageBox } = ElementPlus;
 
