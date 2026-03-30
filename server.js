@@ -233,33 +233,34 @@ app.delete('/api/agents/:id', requireAuth, (req, res) => {
 // ============ Agent Status ============
 app.get('/api/agents/status', requireAuth, (req, res) => {
   try {
-    const output = execSync('openclaw status --json 2>&1', { timeout: 15000 });
-    const status = JSON.parse(output);
+    // 从 openclaw channels status 获取真实连接状态
+    const output = execSync('openclaw channels status 2>&1', { 
+      timeout: 15000,
+      encoding: 'utf8'
+    });
+    const lines = output.toString().split('\n');
+    const agents = [];
     
-    // 从Gateway获取真实运行状态
-    let gatewayAgents = [];
-    try {
-      const gwOutput = execSync('openclaw gateway status --json 2>&1', { timeout: 5000 });
-      const gwStatus = JSON.parse(gwOutput);
-      // Gateway返回的agents包含真实的运行状态
-      gatewayAgents = (gwStatus.agents || []).map(a => ({
-        agentId: a.agentId || a.id,
-        status: a.status || 'unknown'
-      }));
-    } catch (e) {
-      // 如果Gateway不可用，使用heartbeat状态
-      gatewayAgents = (status.heartbeat?.agents || []).map(a => ({
-        agentId: a.agentId,
-        status: a.enabled ? 'running' : 'stopped'
-      }));
+    for (const line of lines) {
+      // 解析格式: - Discord admin-architect: enabled, configured, running, connected, ...
+      const match = line.match(/^- Discord\s+(\S+):\s+(.+)$/);
+      if (match) {
+        const accountId = match[1];
+        const statusStr = match[2];
+        const connected = statusStr.includes('connected');
+        const running = statusStr.includes('running');
+        agents.push({
+          accountId,
+          connected,
+          running,
+          status: connected ? 'online' : running ? 'running' : 'offline'
+        });
+      }
     }
     
-    res.json({ 
-      agents: gatewayAgents, 
-      defaultAgentId: status.heartbeat?.defaultAgentId 
-    });
+    res.json({ agents });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: e.message, agents: [] });
   }
 });
 

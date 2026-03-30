@@ -1084,9 +1084,15 @@ const app = createApp({
       } catch (e) { console.error(e); }
     }
 
-    // 获取Agent状态
+    // 获取Agent在线状态（基于Discord Bot连接）
     function getAgentStatus(agentId) {
-      return agentStatus.value.find(a => a.agentId === agentId);
+      // agentStatus 是 accountId -> { connected, running, status }
+      // 需要根据agentId找到对应的accountId（通常相同，但有时会略有不同）
+      const found = agentStatus.value.find(a => 
+        a.accountId === agentId || 
+        a.accountId?.replace(/-/g, '') === agentId.replace(/-/g, '')
+      );
+      return found || { connected: false, running: false, status: 'offline' };
     }
 
     // === Agent Detail ===
