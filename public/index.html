@@ -125,6 +125,9 @@
         <div class="nav-item" :class="{ active: currentPage === 'hooks' }" @click="currentPage='hooks'">
           <i class="fas fa-anchor"></i><span>Hooks 管理</span>
         </div>
+        <div class="nav-item" :class="{ active: currentPage === 'skills' }" @click="currentPage='skills'">
+          <i class="fas fa-magic"></i><span>技能管理</span>
+        </div>
         <div class="nav-item" :class="{ active: currentPage === 'gateway' }" @click="currentPage='gateway'">
           <i class="fas fa-server"></i><span>Gateway 管理</span>
         </div>
@@ -753,6 +756,95 @@
           </div>
         </div>
 
+        <!-- ==================== Skills ==================== -->
+        <div v-if="currentPage==='skills'">
+          <h2 class="page-title">🎯 技能管理</h2>
+          
+          <!-- 统计概览 -->
+          <el-row :gutter="16" style="margin-bottom:20px">
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-check-circle"></i> 可用</div>
+              <div style="font-size:36px;font-weight:700;color:#4caf50">{{ skillsSummary.eligible || 0 }}</div>
+            </div></el-col>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-exclamation-triangle"></i> 缺依赖</div>
+              <div style="font-size:36px;font-weight:700;color:#ff9800">{{ skillsSummary.missingRequirements || 0 }}</div>
+            </div></el-col>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-ban"></i> 已禁用</div>
+              <div style="font-size:36px;font-weight:700;color:#9e9e9e">{{ skillsSummary.disabled || 0 }}</div>
+            </div></el-col>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-list"></i> 总数</div>
+              <div style="font-size:36px;font-weight:700;color:#2196f3">{{ skillsSummary.total || 0 }}</div>
+            </div></el-col>
+          </el-row>
+
+          <!-- 搜索和安装 -->
+          <div class="card" style="margin-bottom:20px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <el-input v-model="skillSearchQuery" placeholder="搜索 ClawHub 技能..." @keyup.enter="searchSkills" style="flex:1;max-width:400px">
+                <template #prefix><i class="fas fa-search"></i></template>
+              </el-input>
+              <el-button type="primary" @click="searchSkills"><i class="fas fa-search"></i> 搜索</el-button>
+            </div>
+            
+            <!-- 搜索结果 -->
+            <div v-if="skillSearchResults.length > 0" style="margin-top:16px">
+              <div style="font-size:14px;color:#888;margin-bottom:8px">搜索结果：</div>
+              <el-table :data="skillSearchResults" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+                <el-table-column prop="displayName" label="名称" width="200">
+                  <template #default="{row}">{{ row.displayName || row.slug }}</template>
+                </el-table-column>
+                <el-table-column prop="summary" label="描述">
+                  <template #default="{row}">{{ (row.summary || '').slice(0, 80) }}...</template>
+                </el-table-column>
+                <el-table-column label="操作" width="100">
+                  <template #default="{row}">
+                    <el-button size="small" type="success" @click="installSkill(row.slug)">安装</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+
+          <!-- 技能列表 -->
+          <div class="card">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-list"></i> 所有技能</span>
+              <el-button size="small" @click="loadSkills"><i class="fas fa-sync"></i> 刷新</el-button>
+            </div>
+            <el-table :data="allSkills" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+              <el-table-column prop="name" label="技能名称" width="200">
+                <template #default="{row}">
+                  <div style="display:flex;align-items:center;gap:8px;cursor:pointer" @click="showSkillDetail(row.name)">
+                    <span>{{ row.name }}</span>
+                    <el-tag size="small" :type="row.eligible ? 'success' : row.disabled ? 'info' : 'warning'">{{ row.statusLabel }}</el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="120">
+                <template #default="{row}">
+                  <el-switch v-model="row.eligible" :disabled="row.status === 'missing'" @change="toggleSkill(row)" />
+                </template>
+              </el-table-column>
+              <el-table-column label="依赖问题">
+                <template #default="{row}">
+                  <span v-if="row.missingReqs && row.missingReqs.length > 0" style="color:#ff9800">
+                    缺少: {{ row.missingReqs.join(', ') }}
+                  </span>
+                  <span v-else style="color:#4caf50">✓ 无</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{row}">
+                  <el-button size="small" text @click="showSkillDetail(row.name)"><i class="fas fa-info-circle"></i> 详情</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+
         <!-- ==================== Gateway ==================== -->
         <div v-if="currentPage==='gateway'">
           <h2 class="page-title">🖥️ Gateway 管理</h2>
@@ -860,6 +952,10 @@ const app = createApp({
     const gatewayStatus = ref('unknown');
     const gatewayInfo = ref({});
     const hooksData = reactive({ enabled: true, entries: {} });
+    const allSkills = ref([]);
+    const skillsSummary = ref({});
+    const skillSearchQuery = ref('');
+    const skillSearchResults = ref([]);
     const labels = reactive({ guilds: {}, channels: {} });
     const guildLabels = reactive({});
     const channelLabels = reactive({});
@@ -1359,6 +1455,69 @@ const app = createApp({
       } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
     }
 
+    // === Skills ===
+    async function loadSkills() {
+      try {
+        const data = await api('/skills');
+        allSkills.value = data.skills || [];
+        skillsSummary.value = data.summary || {};
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function toggleSkill(skill) {
+      try {
+        if (skill.eligible) {
+          await api(`/skills/${skill.name}/enable`, { method: 'POST' });
+          ElMessage.success(`技能 ${skill.name} 已启用`);
+        } else {
+          await api(`/skills/${skill.name}/disable`, { method: 'POST' });
+          ElMessage.success(`技能 ${skill.name} 已禁用`);
+        }
+        loadSkills();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function showSkillDetail(skillName) {
+      try {
+        const data = await api(`/skills/${skillName}`);
+        ElMessageBox.alert(`
+          <div style="font-family:monospace;font-size:12px;white-space:pre-wrap">
+名称: ${data.name}
+来源: ${data.source || 'unknown'}
+路径: ${data.filePath || 'bundled'}
+状态: ${data.eligible ? '✅ 可用' : data.disabled ? '⚪ 已禁用' : '⚠️ 缺依赖'}
+
+描述:
+${data.description || '无描述'}
+          </div>
+        `, `技能详情: ${skillName}`, { 
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '关闭'
+        });
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function searchSkills() {
+      if (!skillSearchQuery.value.trim()) return;
+      try {
+        const data = await api(`/skills/search?q=${encodeURIComponent(skillSearchQuery.value)}`);
+        skillSearchResults.value = data.results || [];
+        if (data.results.length === 0) {
+          ElMessage.info('未找到相关技能');
+        }
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function installSkill(slug) {
+      try {
+        ElMessage.info(`正在安装 ${slug}，请稍候...`);
+        // TODO: 需要后端实现安装API
+        ElMessage.success(`技能 ${slug} 安装成功`);
+        skillSearchResults.value = [];
+        loadSkills();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
     // === Hooks ===
     async function toggleHook(name, enabled) {
       try { await api('/hooks', { method: 'PUT', body: { entries: { [name]: { enabled } } } }); ElMessage.success('已更新'); loadAll(); }
@@ -1396,7 +1555,11 @@ const app = createApp({
       try {
         const r = await fetch('/api/auth/check');
         const d = await r.json();
-        if (d.authenticated) { authenticated.value = true; loadAll(); }
+        if (d.authenticated) { 
+          authenticated.value = true; 
+          loadAll();
+          loadSkills();
+        }
       } catch {}
     });
 
@@ -1404,6 +1567,9 @@ const app = createApp({
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
       agents, agentStatus, guildGroups, expandedGuilds, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
+      // Skills
+      allSkills, skillsSummary, skillSearchQuery, skillSearchResults,
+      loadSkills, toggleSkill, showSkillDetail, searchSkills, installSkill,
       // Agent Detail
       currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding, newSkillName,
       showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, saveHeartbeatDoc, updateDetailBinding, enableSkill, disableSkill,

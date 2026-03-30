@@ -101,24 +101,6 @@ app.get('/api/system/status', requireAuth, (req, res) => {
 });
 
 // ============ Skills Management ============
-app.get('/api/skills', requireAuth, (req, res) => {
-  try {
-    const output = execSync('openclaw skills --json 2>&1', { timeout: 10000 });
-    res.json(JSON.parse(output));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/skills', requireAuth, (req, res) => {
-  try {
-    const output = execSync('openclaw skills list --json', { timeout: 15000 });
-    res.json(JSON.parse(output));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 app.post('/api/skills/install', requireAuth, (req, res) => {
   try {
     const { slug, version, force } = req.body;
@@ -230,7 +212,157 @@ app.delete('/api/agents/:id', requireAuth, (req, res) => {
   }
 });
 
-// ============ Agent Status ============
+// ============ Skills 管理 ============
+app.get('/api/skills', requireAuth, (req, res) => {
+  try {
+    const output = execSync('openclaw skills check --json 2>&1', { 
+      timeout: 15000,
+      encoding: 'utf8'
+    });
+    const data = JSON.parse(output);
+    
+    // 格式化技能列表
+    const skills = [];
+    
+    // 已就绪的技能
+    for (const name of (data.eligible || [])) {
+      skills.push({
+        name,
+        status: 'eligible',
+        statusLabel: '🟢 可用',
+        eligible: true,
+        disabled: false,
+        blocked: false,
+        missingReqs: []
+      });
+    }
+    
+    // 缺少依赖的技能
+    for (const item of (data.missingRequirements || [])) {
+      skills.push({
+        name: item.name,
+        status: 'missing',
+        statusLabel: '🟠 缺依赖',
+        eligible: false,
+        disabled: false,
+        blocked: false,
+        missingReqs: Object.keys(item.missing || {}),
+        installOptions: item.install || []
+      });
+    }
+    
+    // 已禁用的技能
+    for (const name of (data.disabled || [])) {
+      skills.push({
+        name,
+        status: 'disabled',
+        statusLabel: '⚪ 已禁用',
+        eligible: false,
+        disabled: true,
+        blocked: false,
+        missingReqs: []
+      });
+    }
+    
+    // 被阻止的技能
+    for (const item of (data.blocked || [])) {
+      skills.push({
+        name: typeof item === 'string' ? item : item.name,
+        status: 'blocked',
+        statusLabel: '🔴 被阻止',
+        eligible: false,
+        disabled: false,
+        blocked: true,
+        missingReqs: []
+      });
+    }
+    
+    res.json({ 
+      skills,
+      summary: data.summary || {}
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message, skills: [] });
+  }
+});
+
+app.get('/api/skills/:name', requireAuth, (req, res) => {
+  try {
+    const { name } = req.params;
+    const output = execSync(`openclaw skills info "${name}" --json 2>&1`, { 
+      timeout: 10000,
+      encoding: 'utf8'
+    });
+    const data = JSON.parse(output);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/skills/:name/enable', requireAuth, (req, res) => {
+  try {
+    const { name } = req.params;
+    const config = readConfig();
+    
+    // 从disabledSkills中移除（如果存在）
+    if (!config.skills) config.skills = {};
+    if (!config.skills.disabled) config.skills.disabled = [];
+    config.skills.disabled = config.skills.disabled.filter(s => s !== name);
+    
+    // 添加到skillAllowlist（如果不存在）
+    if (!config.skills.allowlist) config.skills.allowlist = [];
+    if (!config.skills.allowlist.includes(name)) {
+      config.skills.allowlist.push(name);
+    }
+    
+    writeConfig(config);
+    res.json({ success: true, message: `技能 ${name} 已启用` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/skills/:name/disable', requireAuth, (req, res) => {
+  try {
+    const { name } = req.params;
+    const config = readConfig();
+    
+    // 添加到disabledSkills
+    if (!config.skills) config.skills = {};
+    if (!config.skills.disabled) config.skills.disabled = [];
+    if (!config.skills.disabled.includes(name)) {
+      config.skills.disabled.push(name);
+    }
+    
+    // 从skillAllowlist中移除
+    if (config.skills.allowlist) {
+      config.skills.allowlist = config.skills.allowlist.filter(s => s !== name);
+    }
+    
+    writeConfig(config);
+    res.json({ success: true, message: `技能 ${name} 已禁用` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/skills/search', requireAuth, (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.json({ results: [] });
+    }
+    const output = execSync(`openclaw skills search "${q}" --json 2>&1`, { 
+      timeout: 15000,
+      encoding: 'utf8'
+    });
+    const data = JSON.parse(output);
+    res.json({ results: data.results || [] });
+  } catch (e) {
+    res.json({ results: [], error: e.message });
+  }
+});
 app.get('/api/agents/status', requireAuth, (req, res) => {
   try {
     // 从 openclaw channels status 获取真实连接状态
