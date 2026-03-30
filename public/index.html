@@ -142,8 +142,8 @@
     <div class="login-box">
       <div class="logo-big">🦞</div>
       <h1>OpenClaw 管理后台</h1>
-      <p>请输入 Gateway Token 登录</p>
-      <el-input v-model="loginToken" type="password" placeholder="Gateway Token" show-password size="large" @keyup.enter="login" style="margin-bottom:16px">
+      <p>请输入管理密码登录</p>
+      <el-input v-model="loginToken" type="password" placeholder="管理密码" show-password size="large" @keyup.enter="login" style="margin-bottom:16px">
         <template #prefix><i class="fas fa-key"></i></template>
       </el-input>
       <el-button type="primary" size="large" :loading="loginLoading" @click="login" style="width:100%">登录</el-button>

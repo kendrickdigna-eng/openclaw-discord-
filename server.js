@@ -55,15 +55,17 @@ function maskToken(token) {
 }
 
 // ============ Auth Routes ============
+// 管理后台登录密码
+const ADMIN_PASSWORD = '020402';
+
 app.post('/api/auth/login', (req, res) => {
   const { token } = req.body;
-  const gwToken = getGatewayToken();
-  if (token === gwToken) {
+  if (token === ADMIN_PASSWORD) {
     req.session.authenticated = true;
     req.session.token = token;
     res.json({ success: true, message: '登录成功' });
   } else {
-    res.status(401).json({ error: 'Token 无效' });
+    res.status(401).json({ error: '密码错误' });
   }
 });
 
