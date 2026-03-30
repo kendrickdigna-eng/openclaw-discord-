@@ -53,6 +53,20 @@
     .gateway-banner.gw-running { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
     .gateway-banner.gw-stopped { background: linear-gradient(135deg, #b71c1c 0%, #c62828 100%); }
     .gateway-banner.gw-unknown { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
+    .agent-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .agent-status-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+    .agent-status-card:hover { border-color: #4fc3f7; transform: translateY(-2px); }
+    .agent-status-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .agent-status-header .agent-name { font-size: 16px; font-weight: 600; color: #e0e0e0; display: flex; align-items: center; gap: 8px; }
+    .agent-status-body { padding: 0 20px 16px; }
+    .agent-status-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; color: #999; font-size: 13px; }
+    .agent-status-row i { width: 16px; text-align: center; color: #666; }
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .online-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    .online-dot.offline { background: #666; }
+    .collab-tag { display: inline-flex; align-items: center; gap: 4px; background: #252545; padding: 2px 8px; border-radius: 10px; font-size: 12px; color: #aaa; margin: 2px; }
+    .skill-tag { display: inline-block; background: #1a237e; color: #7986cb; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; }
+    .time-ago { color: #555; font-size: 12px; }
     .card-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e0e0e0; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-running { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
@@ -220,6 +234,40 @@
                 </div>
               </el-col>
             </el-row>
+          </div>
+
+          <!-- Agent Status -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-robot"></i> Agent 状态</div>
+            <div class="agent-status-grid">
+              <div v-for="as in agentStatus" :key="as.id" class="agent-status-card">
+                <div class="agent-status-header">
+                  <span class="agent-name">
+                    <span class="online-dot" :class="as.online ? 'online' : 'offline'"></span>
+                    <i class="fas fa-robot" style="color:#4fc3f7"></i>
+                    {{ as.id }}
+                  </span>
+                  <el-tag :type="as.online ? 'success' : 'info'" size="small">{{ as.online ? '在线' : '离线' }}</el-tag>
+                </div>
+                <div class="agent-status-body">
+                  <div class="agent-status-row"><i class="fas fa-clock"></i> 最后活动: <span class="time-ago">{{ timeAgo(as.lastActive) }}</span></div>
+                  <div class="agent-status-row"><i class="fas fa-comments"></i> 活跃会话: {{ as.activeSessions || 0 }}</div>
+                  <div class="agent-status-row" v-if="as.skills && as.skills.length">
+                    <i class="fas fa-puzzle-piece"></i>
+                    <div style="display:flex;flex-wrap:wrap;gap:0">
+                      <span class="skill-tag" v-for="sk in as.skills.slice(0, 5)" :key="sk">{{ sk }}</span>
+                      <span v-if="as.skills.length > 5" class="skill-tag">+{{ as.skills.length - 5 }}</span>
+                    </div>
+                  </div>
+                  <div class="agent-status-row" v-if="as.collaborations && as.collaborations.length">
+                    <i class="fas fa-handshake"></i>
+                    <div style="display:flex;flex-wrap:wrap;gap:0">
+                      <span class="collab-tag" v-for="c in as.collaborations" :key="c"><i class="fas fa-robot" style="color:#ab47bc;font-size:11px"></i> {{ c }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -712,6 +760,7 @@ const app = createApp({
 
     // Data
     const agents = ref([]);
+    const agentStatus = ref([]);
     const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
@@ -883,6 +932,17 @@ const app = createApp({
       return name ? `${name} (${id})` : id;
     }
 
+    function timeAgo(iso) {
+      if (!iso) return '未知';
+      const diff = Date.now() - new Date(iso).getTime();
+      const m = Math.floor(diff / 60000);
+      if (m < 1) return '刚刚';
+      if (m < 60) return m + ' 分钟前';
+      const h = Math.floor(m / 60);
+      if (h < 24) return h + ' 小时前';
+      return Math.floor(h / 24) + ' 天前';
+    }
+
     function saveGuildLabel(guildId, name) {
       if (!labels.guilds) labels.guilds = {};
       if (name && name.trim()) labels.guilds[guildId] = name.trim();
@@ -912,7 +972,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, st] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -920,9 +980,11 @@ const app = createApp({
           api('/config').catch(() => ({})),
           api('/gateway/status').catch(() => ({})),
           api('/settings').catch(() => ({})),
-          api('/labels').catch(() => ({guilds:{},channels:{}}))
+          api('/labels').catch(() => ({guilds:{},channels:{}})),
+          api('/agents/status').catch(() => [])
         ]);
         agents.value = a || [];
+        agentStatus.value = st || [];
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
@@ -1141,7 +1203,7 @@ const app = createApp({
 
     return {
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed, windowWidth,
-      agents, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      agents, agentStatus, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
@@ -1152,7 +1214,7 @@ const app = createApp({
       addUserDialog, newUserId, addUserAccountName, addUserGuildId,
       addBindingDialog, newBinding,
       discordAccountCount, discordAccountNames, bindingByGuild, unboundAccounts, hooksList, pageTitle, configItems,
-      maskToken, displayName, saveGuildLabel, saveChannelLabel,
+      maskToken, displayName, timeAgo, saveGuildLabel, saveChannelLabel,
       login, logout, loadAll,
       showCreateAgent, createAgent, deleteAgent, editAgent,
       loadFile, saveFile,
