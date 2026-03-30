@@ -164,8 +164,8 @@
               </div>
             </div></el-col>
             <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fab fa-discord"></i> 频道组</div>
-              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ channelGroups.length }}</div>
+              <div class="card-header"><i class="fab fa-discord"></i> 服务器</div>
+              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ guildGroups.length }}</div>
             </div></el-col>
             <el-col :span="6"><div class="card">
               <div class="card-header"><i class="fas fa-link"></i> 绑定</div>
@@ -173,51 +173,66 @@
             </div></el-col>
           </el-row>
 
-          <!-- 按频道分组的Agent -->
+          <!-- 按服务器分组的Agent -->
           <div class="card" style="margin-top:20px">
             <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-              <span><i class="fas fa-layer-group"></i> 按频道分组的 Agent</span>
+              <span><i class="fas fa-server"></i> 按服务器分组的 Agent</span>
               <el-button size="small" @click="loadAll"><i class="fas fa-sync"></i> 刷新</el-button>
             </div>
-            <div v-if="channelGroups.length === 0" style="color:#888;text-align:center;padding:40px">
-              暂无频道绑定数据
+            <div v-if="guildGroups.length === 0" style="color:#888;text-align:center;padding:40px">
+              暂无服务器绑定数据
             </div>
             <div v-else>
-              <div v-for="group in channelGroups" :key="group.channel" style="margin-bottom:20px">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #2a2a4a">
-                  <i class="fab fa-discord" style="color:#5865F2;font-size:20px"></i>
-                  <span style="font-weight:600;font-size:16px;color:#e0e0e0">{{ group.channel }}</span>
-                  <el-tag size="small" type="info">{{ group.agents.length }} 个Agent</el-tag>
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">
-                  <div v-for="agent in group.agents" :key="agent.agentId" 
-                       class="agent-card" 
-                       style="background:#252545;border-radius:12px;padding:16px;cursor:pointer;border:1px solid #3a3a5a;transition:all 0.2s"
-                       @click="showAgentDetail(agent.agentId)"
-                       @mouseenter="$event.currentTarget.style.borderColor='#4fc3f7'"
-                       @mouseleave="$event.currentTarget.style.borderColor='#3a3a5a'">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                      <div style="display:flex;align-items:center;gap:10px">
-                        <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'" style="width:12px;height:12px"></span>
-                        <span style="font-weight:600;color:#e0e0e0;font-size:16px">{{ agent.displayName || agent.agentId }}</span>
-                      </div>
-                      <el-tag size="small" :type="getAgentStatus(agent.agentId)?.enabled ? 'success' : 'info'">
-                        {{ getAgentStatus(agent.agentId)?.enabled ? '在线' : '离线' }}
-                      </el-tag>
+              <el-collapse v-model="expandedGuilds" style="border:none">
+                <el-collapse-item v-for="guild in guildGroups" :key="guild.guildId" :name="guild.guildId">
+                  <template #title>
+                    <div style="display:flex;align-items:center;gap:10px;width:100%">
+                      <i class="fas fa-server" style="color:#5865F2;font-size:18px"></i>
+                      <span style="font-weight:600;font-size:16px;color:#e0e0e0">{{ guild.guildName }}</span>
+                      <el-tag size="small" type="info">{{ guild.channels?.length || 0 }} 个频道</el-tag>
+                      <el-tag size="small" type="success">{{ guild.channels?.reduce((sum,ch) => sum + (ch.agents?.length || 0), 0) || 0 }} 个Agent</el-tag>
                     </div>
-                    <div style="font-size:13px;color:#888;margin-bottom:8px">
-                      <i class="fas fa-robot" style="margin-right:4px"></i> {{ agent.agentId }}
+                  </template>
+                  
+                  <!-- 频道列表 -->
+                  <div v-for="channel in guild.channels" :key="channel.channelId" style="margin-bottom:16px;margin-left:24px">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #2a2a4a">
+                      <i class="fas fa-hashtag" style="color:#888;font-size:14px"></i>
+                      <span style="font-weight:500;font-size:14px;color:#bbb">{{ channel.channelName || channel.channelId }}</span>
+                      <el-tag size="small" type="info">{{ channel.agents?.length || 0 }} 个Agent</el-tag>
                     </div>
-                    <div v-if="agent.skills && agent.skills.length > 0" style="margin-top:8px">
-                      <div style="font-size:12px;color:#666;margin-bottom:4px"><i class="fas fa-magic"></i> 技能</div>
-                      <div style="display:flex;flex-wrap:wrap;gap:4px">
-                        <el-tag v-for="skill in agent.skills.slice(0,3)" :key="skill" size="small" type="warning" style="font-size:11px">{{ skill }}</el-tag>
-                        <el-tag v-if="agent.skills.length > 3" size="small" type="info" style="font-size:11px">+{{ agent.skills.length - 3 }}</el-tag>
+                    
+                    <!-- Agent卡片 -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+                      <div v-for="agent in channel.agents" :key="agent.agentId" 
+                           class="agent-card" 
+                           style="background:#252545;border-radius:10px;padding:14px;cursor:pointer;border:1px solid #3a3a5a;transition:all 0.2s"
+                           @click="showAgentDetail(agent.agentId)"
+                           @mouseenter="$event.currentTarget.style.borderColor='#4fc3f7'"
+                           @mouseleave="$event.currentTarget.style.borderColor='#3a3a5a'">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                          <div style="display:flex;align-items:center;gap:8px">
+                            <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'" style="width:10px;height:10px"></span>
+                            <span style="font-weight:600;color:#e0e0e0;font-size:15px">{{ agent.displayName || agent.agentId }}</span>
+                          </div>
+                          <el-tag size="small" :type="getAgentStatus(agent.agentId)?.enabled ? 'success' : 'info'">
+                            {{ getAgentStatus(agent.agentId)?.enabled ? '在线' : '离线' }}
+                          </el-tag>
+                        </div>
+                        <div style="font-size:12px;color:#888;margin-bottom:6px">
+                          <i class="fas fa-robot" style="margin-right:4px"></i> {{ agent.agentId }}
+                        </div>
+                        <div v-if="agent.skills && agent.skills.length > 0" style="margin-top:6px">
+                          <div style="display:flex;flex-wrap:wrap;gap:3px">
+                            <el-tag v-for="skill in agent.skills.slice(0,3)" :key="skill" size="small" type="warning" style="font-size:10px">{{ skill }}</el-tag>
+                            <el-tag v-if="agent.skills.length > 3" size="small" type="info" style="font-size:10px">+{{ agent.skills.length - 3 }}</el-tag>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </el-collapse-item>
+              </el-collapse>
             </div>
           </div>
         </div>
@@ -833,8 +848,9 @@ const app = createApp({
 
     // Data
     const agents = ref([]);
-    const agentStatus = ref([]);  // Agent状态（从heartbeat获取）
-    const channelGroups = ref([]); // 按频道分组的Agent
+    const agentStatus = ref([]);  // Agent状态（从运行时获取）
+    const guildGroups = ref([]); // 按服务器分组的Agent
+    const expandedGuilds = ref([]); // 展开的Guild
     const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
@@ -1034,7 +1050,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l, ch, st] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, g, st] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -1043,12 +1059,12 @@ const app = createApp({
           api('/gateway/status').catch(() => ({})),
           api('/settings').catch(() => ({})),
           api('/labels').catch(() => ({guilds:{},channels:{}})),
-          api('/discord/channels').catch(() => ({channels:[]})),
+          api('/discord/channels').catch(() => ({guilds:[]})),
           api('/agents/status').catch(() => ({agents:[]}))
         ]);
         agents.value = a || [];
         agentStatus.value = st.agents || [];
-        channelGroups.value = ch.channels || [];
+        guildGroups.value = g.guilds || [];
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
@@ -1365,7 +1381,7 @@ const app = createApp({
 
     return {
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
-      agents, agentStatus, channelGroups, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      agents, agentStatus, guildGroups, expandedGuilds, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       // Agent Detail
       currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding, newSkillName,

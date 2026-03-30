@@ -468,23 +468,22 @@ app.get('/api/agents/:id/logs', requireAuth, (req, res) => {
   }
 });
 
-// ============ Discord Channels (从bindings提取) ============
+// ============ Discord Channels (按Guild分组) ============
 app.get('/api/discord/channels', requireAuth, (req, res) => {
   try {
     const config = readConfig();
     const bindings = config.bindings || [];
+    const discordAccounts = config.channels?.discord?.accounts || {};
     
     // 辅助函数：获取Agent详情
     function getAgentDetails(agentId) {
       let displayName = agentId;
       let skills = [];
       
-      // 获取workspace路径
       let wsPath = path.join(WORKSPACES_DIR, `workspace-${agentId}`);
       const entry = (config.agents?.list || []).find(a => (typeof a === 'string' ? a : a.id) === agentId);
       if (typeof entry === 'object' && entry.workspace) wsPath = entry.workspace;
       
-      // 读取IDENTITY.md获取显示名称
       const identityPath = path.join(wsPath, 'IDENTITY.md');
       if (fs.existsSync(identityPath)) {
         const content = fs.readFileSync(identityPath, 'utf8');
@@ -492,7 +491,6 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
         if (match) displayName = match[1].trim();
       }
       
-      // 从sessions获取技能列表
       const sessionsPath = path.join(CONFIG_PATH, '../agents', agentId, 'sessions/sessions.json');
       if (fs.existsSync(sessionsPath)) {
         try {
@@ -507,22 +505,62 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
       return { displayName, skills };
     }
     
-    // 按channel分组
-    const channels = {};
-    bindings.forEach(b => {
-      const ch = b.match?.channel || 'unknown';
-      if (!channels[ch]) channels[ch] = { channel: ch, agents: [] };
-      
-      const details = getAgentDetails(b.agentId);
-      channels[ch].agents.push({
-        agentId: b.agentId,
-        accountId: b.match?.accountId || '',
-        displayName: details.displayName,
-        skills: details.skills
-      });
-    });
+    // 按Guild分组
+    const guilds = {};
     
-    res.json({ channels: Object.values(channels), discordEnabled: config.plugins?.entries?.discord?.enabled !== false });
+    // 从Discord账号配置中获取Guild信息
+    for (const [accName, acc] of Object.entries(discordAccounts)) {
+      const accGuilds = acc.guilds || {};
+      for (const [guildId, guild] of Object.entries(accGuilds)) {
+        if (!guilds[guildId]) {
+          guilds[guildId] = {
+            guildId,
+            guildName: guild.name || guildId,
+            channels: {}
+          };
+        }
+        
+        // 处理该Guild下的频道
+        const channels = guild.channels || {};
+        for (const [channelId, channelConfig] of Object.entries(channels)) {
+          if (!guilds[guildId].channels[channelId]) {
+            guilds[guildId].channels[channelId] = {
+              channelId,
+              channelName: channelConfig.name || channelId,
+              agents: []
+            };
+          }
+          
+          // 查找绑定到这个账号和guild的Agent
+          const binding = bindings.find(b => 
+            b.match?.accountId === accName && 
+            b.match?.channel === 'discord'
+          );
+          
+          if (binding) {
+            const details = getAgentDetails(binding.agentId);
+            // 避免重复添加
+            if (!guilds[guildId].channels[channelId].agents.find(a => a.agentId === binding.agentId)) {
+              guilds[guildId].channels[channelId].agents.push({
+                agentId: binding.agentId,
+                accountId: accName,
+                displayName: details.displayName,
+                skills: details.skills
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    // 转换为数组格式
+    const result = Object.values(guilds).map(g => ({
+      guildId: g.guildId,
+      guildName: g.guildName,
+      channels: Object.values(g.channels)
+    }));
+    
+    res.json({ guilds: result, discordEnabled: config.channels?.discord?.enabled !== false });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
