@@ -165,6 +165,9 @@
         <div class="nav-item" :class="{ active: currentPage === 'hooks' }" @click="currentPage='hooks'; if(windowWidth<769) sidebarCollapsed=true">
           <i class="fas fa-anchor"></i><span>Hooks 管理</span>
         </div>
+        <div class="nav-item" :class="{ active: currentPage === 'skills' }" @click="currentPage='skills'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-puzzle-piece"></i><span>Skills 管理</span>
+        </div>
         <div class="nav-item" :class="{ active: currentPage === 'gateway' }" @click="currentPage='gateway'; if(windowWidth<769) sidebarCollapsed=true">
           <i class="fas fa-server"></i><span>Gateway 管理</span>
         </div>
@@ -236,38 +239,15 @@
             </el-row>
           </div>
 
-          <!-- Agent Status -->
+          <!-- System Status -->
           <div class="card">
-            <div class="card-header"><i class="fas fa-robot"></i> Agent 状态</div>
-            <div class="agent-status-grid">
-              <div v-for="as in agentStatus" :key="as.id" class="agent-status-card">
-                <div class="agent-status-header">
-                  <span class="agent-name">
-                    <span class="online-dot" :class="as.online ? 'online' : 'offline'"></span>
-                    <i class="fas fa-robot" style="color:#4fc3f7"></i>
-                    {{ as.id }}
-                  </span>
-                  <el-tag :type="as.online ? 'success' : 'info'" size="small">{{ as.online ? '在线' : '离线' }}</el-tag>
-                </div>
-                <div class="agent-status-body">
-                  <div class="agent-status-row"><i class="fas fa-clock"></i> 最后活动: <span class="time-ago">{{ timeAgo(as.lastActive) }}</span></div>
-                  <div class="agent-status-row"><i class="fas fa-comments"></i> 活跃会话: {{ as.activeSessions || 0 }}</div>
-                  <div class="agent-status-row" v-if="as.skills && as.skills.length">
-                    <i class="fas fa-puzzle-piece"></i>
-                    <div style="display:flex;flex-wrap:wrap;gap:0">
-                      <span class="skill-tag" v-for="sk in as.skills.slice(0, 5)" :key="sk">{{ sk }}</span>
-                      <span v-if="as.skills.length > 5" class="skill-tag">+{{ as.skills.length - 5 }}</span>
-                    </div>
-                  </div>
-                  <div class="agent-status-row" v-if="as.collaborations && as.collaborations.length">
-                    <i class="fas fa-handshake"></i>
-                    <div style="display:flex;flex-wrap:wrap;gap:0">
-                      <span class="collab-tag" v-for="c in as.collaborations" :key="c"><i class="fas fa-robot" style="color:#ab47bc;font-size:11px"></i> {{ c }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div class="card-header" style="justify-content:space-between">
+              <span><i class="fas fa-heartbeat"></i> 系统状态</span>
+              <el-button size="small" @click="loadSystemStatus" :loading="systemStatusLoading"><i class="fas fa-sync"></i> 刷新</el-button>
             </div>
+            <div v-if="systemStatusLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">加载中...</p></div>
+            <div v-else-if="systemStatus" style="font-family:'Fira Code',monospace;font-size:13px;background:#0a0a14;border-radius:8px;padding:16px;color:#aaa;white-space:pre-wrap;max-height:300px;overflow-y:auto;line-height:1.6">{{ formatSystemStatus(systemStatus) }}</div>
+            <div v-else style="text-align:center;padding:30px;color:#666"><i class="fas fa-plug" style="font-size:24px"></i><p style="margin-top:8px">暂无状态数据</p></div>
           </div>
         </div>
 
@@ -657,6 +637,84 @@
           </div>
         </div>
 
+        <!-- ==================== Skills ==================== -->
+        <div class="page-transition" v-if="currentPage==='skills'">
+          <h2 class="page-title">🧩 Skills 管理</h2>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+            <el-button type="primary" @click="loadSkills" :loading="skillsLoading"><i class="fas fa-sync"></i> 刷新列表</el-button>
+            <el-button type="success" @click="showInstallDialog"><i class="fas fa-download"></i> 安装 Skill</el-button>
+            <el-button type="warning" @click="updateAllSkills" :loading="skillsUpdating"><i class="fas fa-arrow-up"></i> 全部更新</el-button>
+          </div>
+
+          <!-- Search -->
+          <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <el-input v-model="skillSearchQuery" placeholder="搜索 ClawHub skills..." clearable style="flex:1" @keyup.enter="searchSkills">
+                <template #prefix><i class="fas fa-search"></i></template>
+              </el-input>
+              <el-button type="primary" @click="searchSkills" :loading="skillSearchLoading"><i class="fas fa-search"></i> 搜索</el-button>
+            </div>
+          </div>
+
+          <!-- Installed Skills -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-list"></i> 已安装 Skills <el-tag size="small" type="info" style="margin-left:8px">{{ installedSkills.length }}</el-tag></div>
+            <div v-if="skillsLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i></div>
+            <div v-else-if="installedSkills.length === 0" class="empty-state">
+              <i class="fas fa-puzzle-piece"></i>
+              <p>暂无已安装的 Skill</p>
+            </div>
+            <div v-else style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+              <div v-for="sk in installedSkills" :key="sk.name || sk.slug" style="background:#14142a;border-radius:10px;padding:16px;border:1px solid #222244;transition:border-color 0.2s" @mouseenter="$event.target.style.borderColor='#4fc3f7'" @mouseleave="$event.target.style.borderColor='#222244'">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-weight:600;color:#4fc3f7;font-size:15px"><i class="fas fa-puzzle-piece" style="margin-right:6px"></i>{{ sk.name || sk.slug }}</span>
+                  <el-button size="small" type="primary" text @click="updateSingleSkill(sk.slug)" :loading="skillUpdatingId===sk.slug"><i class="fas fa-arrow-up"></i></el-button>
+                </div>
+                <div style="color:#888;font-size:12px;line-height:1.6">
+                  <div v-if="sk.version"><i class="fas fa-tag" style="width:14px"></i> 版本: {{ sk.version }}</div>
+                  <div v-if="sk.location"><i class="fas fa-folder" style="width:14px"></i> {{ sk.location }}</div>
+                  <div v-if="sk.description" style="margin-top:4px;color:#666">{{ sk.description }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div v-if="skillSearchResults.length > 0" class="card">
+            <div class="card-header"><i class="fas fa-globe"></i> 搜索结果 <el-tag size="small" type="info" style="margin-left:8px">{{ skillSearchResults.length }}</el-tag></div>
+            <el-table :data="skillSearchResults" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0}">
+              <el-table-column prop="name" label="名称" width="200">
+                <template #default="{row}"><span style="color:#4fc3f7;font-weight:600">{{ row.name || row.slug }}</span></template>
+              </el-table-column>
+              <el-table-column prop="description" label="描述" />
+              <el-table-column prop="version" label="版本" width="100" />
+              <el-table-column label="操作" width="140">
+                <template #default="{row}">
+                  <el-button type="primary" size="small" @click="installSkill(row.slug)" :loading="skillInstallingId===row.slug"><i class="fas fa-download"></i> 安装</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- Install Dialog -->
+          <el-dialog v-model="installDialogVisible" title="安装 Skill" width="450px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="Skill Slug">
+                <el-input v-model="installSlug" placeholder="例如: healthcheck" />
+              </el-form-item>
+              <el-form-item label="版本 (可选)">
+                <el-input v-model="installVersion" placeholder="留空安装最新版" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="installDialogVisible=false">取消</el-button>
+              <el-button type="primary" @click="installSkill(installSlug)" :loading="skillInstallingId===installSlug">安装</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
         <!-- ==================== Gateway ==================== -->
         <div class="page-transition" v-if="currentPage==='gateway'">
           <h2 class="page-title">🖥️ Gateway 管理</h2>
@@ -761,6 +819,19 @@ const app = createApp({
     // Data
     const agents = ref([]);
     const agentStatus = ref([]);
+    const systemStatus = ref(null);
+    const systemStatusLoading = ref(false);
+    const installedSkills = ref([]);
+    const skillsLoading = ref(false);
+    const skillsUpdating = ref(false);
+    const skillUpdatingId = ref('');
+    const skillSearchQuery = ref('');
+    const skillSearchResults = ref([]);
+    const skillSearchLoading = ref(false);
+    const skillInstallingId = ref('');
+    const installDialogVisible = ref(false);
+    const installSlug = ref('');
+    const installVersion = ref('');
     const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
@@ -889,7 +960,7 @@ const app = createApp({
     });
 
     const pageTitle = computed(() => {
-      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', gateway:'Gateway 管理', settings:'系统设置' };
+      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', skills:'Skills 管理', gateway:'Gateway 管理', settings:'系统设置' };
       return map[currentPage.value] || '';
     });
 
@@ -981,10 +1052,16 @@ const app = createApp({
           api('/gateway/status').catch(() => ({})),
           api('/settings').catch(() => ({})),
           api('/labels').catch(() => ({guilds:{},channels:{}})),
-          api('/agents/status').catch(() => [])
+          api('/agents/status').catch(() => []),
+          api('/system/status').catch(() => null),
+          api('/skills').catch(() => []),
+          api('/system/status').catch(() => null),
+          api('/skills').catch(() => [])
         ]);
         agents.value = a || [];
         agentStatus.value = st || [];
+        systemStatus.value = sys;
+        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
@@ -1192,6 +1269,58 @@ const app = createApp({
       } catch (e) { ElMessage.error(e.message); }
     }
 
+    // === System Status ===
+    async function loadSystemStatus() {
+      systemStatusLoading.value = true;
+      try { systemStatus.value = await api('/system/status'); } catch (e) { ElMessage.error('获取状态失败: ' + e.message); }
+      systemStatusLoading.value = false;
+    }
+    function formatSystemStatus(data) {
+      return JSON.stringify(data, null, 2);
+    }
+
+    // === Skills ===
+    async function loadSkills() {
+      skillsLoading.value = true;
+      try {
+        const sk = await api('/skills');
+        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
+      } catch (e) { ElMessage.error('加载 Skills 失败: ' + e.message); }
+      skillsLoading.value = false;
+    }
+    function showInstallDialog() { installSlug.value = ''; installVersion.value = ''; installDialogVisible.value = true; }
+    async function installSkill(slug) {
+      if (!slug) return ElMessage.warning('请输入 Skill slug');
+      skillInstallingId.value = slug;
+      try {
+        await api('/skills/install', { method: 'POST', body: { slug, version: installVersion.value || undefined } });
+        ElMessage.success('安装成功'); installDialogVisible.value = false; loadSkills();
+      } catch (e) { ElMessage.error('安装失败: ' + e.message); }
+      skillInstallingId.value = '';
+    }
+    async function updateSingleSkill(slug) {
+      skillUpdatingId.value = slug;
+      try { await api('/skills/update', { method: 'POST', body: { slug } }); ElMessage.success('更新成功'); loadSkills(); }
+      catch (e) { ElMessage.error('更新失败: ' + e.message); }
+      skillUpdatingId.value = '';
+    }
+    async function updateAllSkills() {
+      skillsUpdating.value = true;
+      try { await api('/skills/update', { method: 'POST', body: {} }); ElMessage.success('全部更新成功'); loadSkills(); }
+      catch (e) { ElMessage.error('更新失败: ' + e.message); }
+      skillsUpdating.value = false;
+    }
+    async function searchSkills() {
+      if (!skillSearchQuery.value.trim()) return;
+      skillSearchLoading.value = true;
+      try {
+        const r = await api('/skills/search?q=' + encodeURIComponent(skillSearchQuery.value));
+        skillSearchResults.value = Array.isArray(r) ? r : (r?.skills || r?.results || []);
+        if (skillSearchResults.value.length === 0) ElMessage.info('未找到相关 Skill');
+      } catch (e) { ElMessage.error('搜索失败: ' + e.message); }
+      skillSearchLoading.value = false;
+    }
+
     // Init
     onMounted(async () => {
       try {
@@ -1203,7 +1332,7 @@ const app = createApp({
 
     return {
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed, windowWidth,
-      agents, agentStatus, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      agents, agentStatus, systemStatus, systemStatusLoading, installedSkills, skillsLoading, skillsUpdating, skillUpdatingId, skillSearchQuery, skillSearchResults, skillSearchLoading, skillInstallingId, installDialogVisible, installSlug, installVersion, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
@@ -1225,6 +1354,7 @@ const app = createApp({
       openAddUser, createUser, deleteUser,
       showAddBinding, addBinding, removeBinding, getBindingAgent, setBindingAgent,
       toggleHook, saveHooks,
+      loadSystemStatus, formatSystemStatus, loadSkills, showInstallDialog, installSkill, updateSingleSkill, updateAllSkills, searchSkills,
       gatewayAction, refreshGateway,
       saveSettings
     };
