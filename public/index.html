@@ -189,28 +189,153 @@
                   <span style="font-weight:600;font-size:16px;color:#e0e0e0">{{ group.channel }}</span>
                   <el-tag size="small" type="info">{{ group.agents.length }} 个Agent</el-tag>
                 </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">
                   <div v-for="agent in group.agents" :key="agent.agentId" 
                        class="agent-card" 
-                       style="background:#252545;border-radius:8px;padding:12px;cursor:pointer;border:1px solid #3a3a5a;transition:all 0.2s"
-                       @click="editAgent(agent.agentId)"
+                       style="background:#252545;border-radius:12px;padding:16px;cursor:pointer;border:1px solid #3a3a5a;transition:all 0.2s"
+                       @click="showAgentDetail(agent.agentId)"
                        @mouseenter="$event.currentTarget.style.borderColor='#4fc3f7'"
                        @mouseleave="$event.currentTarget.style.borderColor='#3a3a5a'">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                      <span style="font-weight:600;color:#e0e0e0">{{ agent.agentId }}</span>
-                      <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'"></span>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'" style="width:12px;height:12px"></span>
+                        <span style="font-weight:600;color:#e0e0e0;font-size:16px">{{ agent.displayName || agent.agentId }}</span>
+                      </div>
+                      <el-tag size="small" :type="getAgentStatus(agent.agentId)?.enabled ? 'success' : 'info'">
+                        {{ getAgentStatus(agent.agentId)?.enabled ? '在线' : '离线' }}
+                      </el-tag>
                     </div>
-                    <div style="font-size:12px;color:#888">
-                      Account: {{ agent.accountId || '—' }}
+                    <div style="font-size:13px;color:#888;margin-bottom:8px">
+                      <i class="fas fa-robot" style="margin-right:4px"></i> {{ agent.agentId }}
                     </div>
-                    <div style="font-size:12px;color:#888;margin-top:4px">
-                      心跳: {{ getAgentStatus(agent.agentId)?.every || 'disabled' }}
+                    <div v-if="agent.skills && agent.skills.length > 0" style="margin-top:8px">
+                      <div style="font-size:12px;color:#666;margin-bottom:4px"><i class="fas fa-magic"></i> 技能</div>
+                      <div style="display:flex;flex-wrap:wrap;gap:4px">
+                        <el-tag v-for="skill in agent.skills.slice(0,3)" :key="skill" size="small" type="warning" style="font-size:11px">{{ skill }}</el-tag>
+                        <el-tag v-if="agent.skills.length > 3" size="small" type="info" style="font-size:11px">+{{ agent.skills.length - 3 }}</el-tag>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- ==================== Agent Detail ==================== -->
+        <div v-if="currentPage==='agent-detail'">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <el-button text @click="currentPage='dashboard'"><i class="fas fa-arrow-left"></i> 返回</el-button>
+            <h2 class="page-title" style="margin-bottom:0">🤖 {{ agentDetail.displayName || agentDetail.id }}</h2>
+            <el-tag :type="agentDetail.heartbeat?.enabled ? 'success' : 'info'">
+              {{ agentDetail.heartbeat?.enabled ? '在线' : '离线' }}
+            </el-tag>
+          </div>
+
+          <!-- 基本信息 -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-info-circle"></i> 基本信息</div>
+            <div class="info-row"><span class="info-label">Agent ID</span><span class="info-value">{{ agentDetail.id }}</span></div>
+            <div class="info-row"><span class="info-label">显示名称</span><span class="info-value">{{ agentDetail.displayName }}</span></div>
+            <div class="info-row"><span class="info-label">工作空间</span><span class="info-value">{{ agentDetail.workspace }}</span></div>
+            <div class="info-row"><span class="info-label">Discord账号</span><span class="info-value">{{ agentDetail.discordAccount?.name || '未绑定' }}</span></div>
+          </div>
+
+          <!-- 6项管理功能 -->
+          <el-tabs type="border-card" style="background:#1d1d2e;border-color:#2a2a4a">
+            
+            <!-- 1. 改配置 -->
+            <el-tab-pane label="📝 改配置">
+              <div style="padding:12px">
+                <el-select v-model="detailFile" placeholder="选择配置文件" style="width:200px;margin-bottom:12px" @change="loadDetailFile">
+                  <el-option v-for="f in ['SOUL.md','AGENTS.md','MEMORY.md','USER.md','IDENTITY.md']" :key="f" :label="f" :value="f" />
+                </el-select>
+                <el-button type="primary" @click="saveDetailFile" :disabled="!detailFile"><i class="fas fa-save"></i> 保存</el-button>
+                <el-input v-model="detailFileContent" type="textarea" :rows="15" style="margin-top:12px" placeholder="选择文件后加载内容..." />
+              </div>
+            </el-tab-pane>
+
+            <!-- 2. 改技能 -->
+            <el-tab-pane label="🎯 改技能">
+              <div style="padding:12px">
+                <div style="margin-bottom:12px;color:#888">当前启用的技能（来自 sessions.json）：</div>
+                <div v-if="agentDetail.skills && agentDetail.skills.length > 0" style="display:flex;flex-wrap:wrap;gap:8px">
+                  <el-tag v-for="skill in agentDetail.skills" :key="skill" type="warning" size="large">{{ skill }}</el-tag>
+                </div>
+                <div v-else style="color:#666">暂无技能数据</div>
+                <div style="margin-top:16px;color:#888">
+                  <i class="fas fa-info-circle"></i> 技能配置在 workspace 目录的 AGENTS.md 或 openclaw.json 中
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <!-- 3. 改绑定 -->
+            <el-tab-pane label="🔗 改绑定">
+              <div style="padding:12px">
+                <div class="info-row"><span class="info-label">当前绑定</span><span class="info-value">{{ agentDetail.binding ? `Channel: ${agentDetail.binding.match?.channel}, Account: ${agentDetail.binding.match?.accountId}` : '未绑定' }}</span></div>
+                <div style="margin-top:16px">
+                  <el-select v-model="newDetailBinding" placeholder="选择Discord账号" style="width:200px">
+                    <el-option v-for="name in discordAccountNames" :key="name" :label="name" :value="name" />
+                  </el-select>
+                  <el-button type="primary" @click="updateDetailBinding" style="margin-left:8px">更新绑定</el-button>
+                </div>
+              </div>
+            </el-tab-pane>
+
+            <!-- 4. 看日志 -->
+            <el-tab-pane label="📋 看日志">
+              <div style="padding:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                  <span style="color:#888">最近 {{ agentLogs.length }} 条日志</span>
+                  <el-button size="small" @click="loadAgentLogs"><i class="fas fa-sync"></i> 刷新</el-button>
+                </div>
+                <pre style="background:#141414;padding:12px;border-radius:6px;max-height:400px;overflow-y:auto;font-size:12px;color:#aaa;white-space:pre-wrap">{{ agentLogs.join('\n') || '暂无日志' }}</pre>
+              </div>
+            </el-tab-pane>
+
+            <!-- 5. 管理会话 -->
+            <el-tab-pane label="💬 管理会话">
+              <div style="padding:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                  <span style="color:#888">会话存储数：{{ agentSessions.length }}</span>
+                  <el-button type="danger" @click="resetAgentSessions"><i class="fas fa-trash"></i> 重置所有会话</el-button>
+                </div>
+                <el-table :data="agentSessions" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+                  <el-table-column prop="storeKey" label="Store Key" width="300"></el-table-column>
+                  <el-table-column label="消息数" width="100">
+                    <template #default="{row}">{{ row.messageCount || 0 }}</template>
+                  </el-table-column>
+                  <el-table-column label="最后更新">
+                    <template #default="{row}">{{ row.lastUpdated || '—' }}</template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </el-tab-pane>
+
+            <!-- 6. 心跳管理 -->
+            <el-tab-pane label="💓 心跳管理">
+              <div style="padding:12px">
+                <el-form label-position="left" label-width="120px" style="max-width:500px">
+                  <el-form-item label="心跳启用">
+                    <el-switch v-model="agentHeartbeat.enabled" @change="saveAgentHeartbeat" />
+                  </el-form-item>
+                  <el-form-item label="心跳间隔">
+                    <el-select v-model="agentHeartbeat.every" :disabled="!agentHeartbeat.enabled" @change="saveAgentHeartbeat" style="width:150px">
+                      <el-option label="10分钟" value="10m" />
+                      <el-option label="30分钟" value="30m" />
+                      <el-option label="1小时" value="1h" />
+                      <el-option label="6小时" value="6h" />
+                      <el-option label="24小时" value="24h" />
+                    </el-select>
+                  </el-form-item>
+                </el-form>
+                <div style="margin-top:12px;color:#888">
+                  <i class="fas fa-info-circle"></i> 心跳间隔决定 Agent 自动检查任务的频率
+                </div>
+              </div>
+            </el-tab-pane>
+
+          </el-tabs>
         </div>
 
         <!-- ==================== Agents ==================== -->
@@ -714,6 +839,16 @@ const app = createApp({
     }, { immediate: true });
     const settings = reactive({ idleMinutes: 0, dmScope: 'per-channel-peer', primaryModel: '', maxConcurrent: 4, toolProfile: 'full' });
 
+    // Agent Detail
+    const currentAgentId = ref('');
+    const agentDetail = ref({});
+    const detailFile = ref('');
+    const detailFileContent = ref('');
+    const agentLogs = ref([]);
+    const agentSessions = ref([]);
+    const agentHeartbeat = reactive({ enabled: false, every: '30m' });
+    const newDetailBinding = ref('');
+
     // Editor
     const editorAgent = ref('');
     const editorFile = ref('');
@@ -826,7 +961,7 @@ const app = createApp({
     });
 
     const pageTitle = computed(() => {
-      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', gateway:'Gateway 管理', settings:'系统设置' };
+      const map = { dashboard:'仪表盘', 'agent-detail':'Agent 详情', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', gateway:'Gateway 管理', settings:'系统设置' };
       return map[currentPage.value] || '';
     });
 
@@ -923,6 +1058,88 @@ const app = createApp({
     // 获取Agent状态
     function getAgentStatus(agentId) {
       return agentStatus.value.find(a => a.agentId === agentId);
+    }
+
+    // === Agent Detail ===
+    async function showAgentDetail(agentId) {
+      currentAgentId.value = agentId;
+      currentPage.value = 'agent-detail';
+      await loadAgentDetail();
+    }
+
+    async function loadAgentDetail() {
+      try {
+        const data = await api(`/agents/${currentAgentId.value}/info`);
+        agentDetail.value = data;
+        Object.assign(agentHeartbeat, data.heartbeat || { enabled: false, every: '30m' });
+        newDetailBinding.value = data.discordAccount?.name || '';
+        await Promise.all([loadAgentSessions(), loadAgentLogs()]);
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function loadDetailFile() {
+      if (!detailFile.value) return;
+      try {
+        const data = await api(`/agents/${currentAgentId.value}/files/${detailFile.value}`);
+        detailFileContent.value = data.content;
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function saveDetailFile() {
+      if (!detailFile.value) return;
+      try {
+        await api(`/agents/${currentAgentId.value}/files/${detailFile.value}`, { method: 'PUT', body: JSON.stringify({ content: detailFileContent.value }) });
+        ElMessage.success('保存成功');
+        loadAgentDetail();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function loadAgentLogs() {
+      try {
+        const data = await api(`/agents/${currentAgentId.value}/logs?lines=100`);
+        agentLogs.value = data.logs || [];
+      } catch (e) { agentLogs.value = []; }
+    }
+
+    async function loadAgentSessions() {
+      try {
+        const data = await api(`/agents/${currentAgentId.value}/sessions`);
+        agentSessions.value = (data.stores || []).map(s => ({
+          storeKey: s.storeKey || s,
+          messageCount: s.messageCount,
+          lastUpdated: s.lastUpdated
+        }));
+      } catch (e) { agentSessions.value = []; }
+    }
+
+    async function resetAgentSessions() {
+      try {
+        await ElMessageBox.confirm('确定重置所有会话？此操作不可恢复！', '确认', { type: 'warning' });
+        await api(`/agents/${currentAgentId.value}/sessions/reset`, { method: 'POST' });
+        ElMessage.success('会话已重置');
+        loadAgentSessions();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+
+    async function saveAgentHeartbeat() {
+      try {
+        await api(`/agents/${currentAgentId.value}/heartbeat`, { method: 'PUT', body: agentHeartbeat });
+        ElMessage.success('心跳配置已保存');
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function updateDetailBinding() {
+      if (!newDetailBinding.value) return;
+      try {
+        // 先删除旧绑定
+        const oldIdx = bindings.value.findIndex(b => b.agentId === currentAgentId.value);
+        if (oldIdx >= 0) await api(`/bindings/${oldIdx}`, { method: 'DELETE' });
+        // 创建新绑定
+        await api('/bindings', { method: 'POST', body: JSON.stringify({ agentId: currentAgentId.value, channel: 'discord', accountId: newDetailBinding.value }) });
+        ElMessage.success('绑定已更新');
+        loadAll();
+        loadAgentDetail();
+      } catch (e) { ElMessage.error(e.message); }
     }
 
     // === Agent CRUD ===
@@ -1126,6 +1343,10 @@ const app = createApp({
       authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
       agents, agentStatus, channelGroups, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
+      // Agent Detail
+      currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding,
+      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, updateDetailBinding,
+      // Editor
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
       addAccountDialog, newAccountName, newAccountToken, accountLoading,

@@ -422,14 +422,51 @@ app.get('/api/discord/channels', requireAuth, (req, res) => {
     const config = readConfig();
     const bindings = config.bindings || [];
     
+    // 辅助函数：获取Agent详情
+    function getAgentDetails(agentId) {
+      let displayName = agentId;
+      let skills = [];
+      
+      // 获取workspace路径
+      let wsPath = path.join(WORKSPACES_DIR, `workspace-${agentId}`);
+      const entry = (config.agents?.list || []).find(a => (typeof a === 'string' ? a : a.id) === agentId);
+      if (typeof entry === 'object' && entry.workspace) wsPath = entry.workspace;
+      
+      // 读取IDENTITY.md获取显示名称
+      const identityPath = path.join(wsPath, 'IDENTITY.md');
+      if (fs.existsSync(identityPath)) {
+        const content = fs.readFileSync(identityPath, 'utf8');
+        const match = content.match(/\*\*Name:\*\*\s*(.+)/);
+        if (match) displayName = match[1].trim();
+      }
+      
+      // 从sessions获取技能列表
+      const sessionsPath = path.join(CONFIG_PATH, '../agents', agentId, 'sessions/sessions.json');
+      if (fs.existsSync(sessionsPath)) {
+        try {
+          const sessions = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
+          const firstKey = Object.keys(sessions)[0];
+          if (firstKey && sessions[firstKey].skillsSnapshot?.skills) {
+            skills = sessions[firstKey].skillsSnapshot.skills.map(s => s.name || s);
+          }
+        } catch {}
+      }
+      
+      return { displayName, skills };
+    }
+    
     // 按channel分组
     const channels = {};
     bindings.forEach(b => {
       const ch = b.match?.channel || 'unknown';
       if (!channels[ch]) channels[ch] = { channel: ch, agents: [] };
+      
+      const details = getAgentDetails(b.agentId);
       channels[ch].agents.push({
         agentId: b.agentId,
-        accountId: b.match?.accountId || ''
+        accountId: b.match?.accountId || '',
+        displayName: details.displayName,
+        skills: details.skills
       });
     });
     
