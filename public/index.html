@@ -6,8 +6,12 @@
   <title>OpenClaw 管理后台</title>
   <link rel="stylesheet" href="libs/element-plus.css">
   <link rel="stylesheet" href="libs/element-plus-dark.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="libs/fontawesome.css">
   <style>
+    [v-cloak] { display: none !important; }
+    .loading-fallback { display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a1a; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
+    .loading-fallback h2 { font-size: 20px; margin-bottom: 8px; }
+    .loading-fallback p { color: #888; font-size: 14px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .dark { --el-bg-color: #141414; --el-bg-color-overlay: #1d1d1d; --el-menu-bg-color: #141414; }
@@ -123,7 +127,13 @@
   </style>
 </head>
 <body>
-<div id="app">
+<div id="loading" class="loading-fallback">
+    <div>
+      <h2>⏳ 正在加载管理面板...</h2>
+      <p>如果长时间停留在此页面，请检查网络连接后刷新重试</p>
+    </div>
+  </div>
+<div id="app" v-cloak>
   <!-- Login -->
   <div v-if="!authenticated" class="login-container">
     <div class="login-box">
@@ -1372,6 +1382,7 @@ const app = createApp({
 
 app.use(ElementPlus);
 app.mount('#app');
+document.getElementById('loading')?.remove();
 </script>
 </body>
 </html>
