@@ -96,10 +96,9 @@ app.get('/api/skills', requireAuth, (req, res) => {
   }
 });
 
-app.get('/api/skills/search', requireAuth, (req, res) => {
+app.get('/api/skills', requireAuth, (req, res) => {
   try {
-    const query = req.query.q || '';
-    const output = execSync(`openclaw skills search --json ${query}`, { timeout: 15000 });
+    const output = execSync('openclaw skills list --json', { timeout: 15000 });
     res.json(JSON.parse(output));
   } catch (e) {
     res.status(500).json({ error: e.message });
