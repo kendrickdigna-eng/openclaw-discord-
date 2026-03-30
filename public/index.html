@@ -3,15 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenClaw 管理后台 v4</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/dist/index.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/theme-chalk/dark/css-vars.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+  <title>OpenClaw 管理后台</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-plus@2.6.0/dist/index.css">
+  <link rel="stylesheet" href="https://unpkg.com/element-plus@2.6.0/theme-chalk/dark/css-vars.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    [v-cloak] { display: none !important; }
-    .loading-fallback { display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a1a; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
-    .loading-fallback h2 { font-size: 20px; margin-bottom: 8px; }
-    .loading-fallback p { color: #888; font-size: 14px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .dark { --el-bg-color: #141414; --el-bg-color-overlay: #1d1d1d; --el-menu-bg-color: #141414; }
@@ -23,54 +19,20 @@
     .sidebar-header .title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; }
     .sidebar.collapsed .sidebar-header .title { display: none; }
     .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: #aaa; transition: all 0.2s; white-space: nowrap; text-decoration: none; border-radius: 0 6px 6px 0; margin: 2px 8px 2px 0; border-left: 3px solid transparent; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: #aaa; transition: all 0.2s; white-space: nowrap; text-decoration: none; border-radius: 6px; margin: 2px 8px; }
     .nav-item:hover { background: #252545; color: #e0e0e0; }
-    .nav-item.active { background: linear-gradient(90deg, #252560 0%, #1d1d2e 100%); color: #fff; border-left-color: #7c4dff; }
+    .nav-item.active { background: #3b3b6b; color: #fff; }
     .nav-item i { width: 20px; text-align: center; font-size: 16px; flex-shrink: 0; }
     .sidebar.collapsed .nav-item span { display: none; }
-    .sidebar-footer { padding: 12px 16px; border-top: 1px solid #2a2a4a; font-size: 12px; color: #555; white-space: nowrap; }
-    .sidebar.collapsed .sidebar-footer { display: none; }
     .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .topbar { height: 48px; background: #1a1a2e; border-bottom: 1px solid #2a2a4a; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
     .topbar-left { display: flex; align-items: center; gap: 12px; }
     .topbar-right { display: flex; align-items: center; gap: 12px; }
     .toggle-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; padding: 4px; }
     .toggle-btn:hover { color: #fff; }
-    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #0f0f1a; position: relative; }
-    .page-transition { animation: fadeSlideIn 0.3s ease; }
-    @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
-    .sidebar-overlay.show { display: block; }
+    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #0f0f1a; }
     .page-title { font-size: 22px; font-weight: 600; margin-bottom: 20px; color: #e0e0e0; }
-    .card { background: #1d1d2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; transition: border-color 0.2s, box-shadow 0.2s; }
-    .card:hover { border-color: #3b3b6b; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-    .stat-card { border-radius: 12px; padding: 20px; color: #fff; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-    .stat-card .stat-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 48px; opacity: 0.15; }
-    .stat-card .stat-label { font-size: 13px; opacity: 0.8; margin-bottom: 8px; }
-    .stat-card .stat-value { font-size: 32px; font-weight: 700; }
-    .stat-card.agents { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); }
-    .stat-card.gateway { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
-    .stat-card.discord { background: linear-gradient(135deg, #4a148c 0%, #6a1b9a 100%); }
-    .stat-card.bindings { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
-    .gateway-banner { color: #fff; }
-    .gateway-banner.gw-running { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
-    .gateway-banner.gw-stopped { background: linear-gradient(135deg, #b71c1c 0%, #c62828 100%); }
-    .gateway-banner.gw-unknown { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
-    .agent-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-    .agent-status-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
-    .agent-status-card:hover { border-color: #4fc3f7; transform: translateY(-2px); }
-    .agent-status-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
-    .agent-status-header .agent-name { font-size: 16px; font-weight: 600; color: #e0e0e0; display: flex; align-items: center; gap: 8px; }
-    .agent-status-body { padding: 0 20px 16px; }
-    .agent-status-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; color: #999; font-size: 13px; }
-    .agent-status-row i { width: 16px; text-align: center; color: #666; }
-    .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .online-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
-    .online-dot.offline { background: #666; }
-    .collab-tag { display: inline-flex; align-items: center; gap: 4px; background: #252545; padding: 2px 8px; border-radius: 10px; font-size: 12px; color: #aaa; margin: 2px; }
-    .skill-tag { display: inline-block; background: #1a237e; color: #7986cb; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; }
-    .time-ago { color: #555; font-size: 12px; }
+    .card { background: #1d1d2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; }
     .card-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e0e0e0; }
     .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .status-running { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
@@ -103,17 +65,11 @@
     .info-value { color: #e0e0e0; font-weight: 500; }
     .tag-group { display: flex; gap: 4px; flex-wrap: wrap; }
     .empty-state { text-align: center; padding: 60px 20px; color: #666; }
-    .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; }
-    .empty-state p { font-size: 15px; margin-bottom: 8px; }
-    .empty-state .empty-hint { font-size: 13px; color: #555; }
+    .empty-state i { font-size: 48px; margin-bottom: 16px; }
     .group-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 12px; }
     .group-card h3 { color: #e0e0e0; margin-bottom: 8px; }
     .group-card p { color: #888; margin-bottom: 12px; font-size: 14px; }
-    .account-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; overflow: hidden; margin-bottom: 16px; transition: border-color 0.2s; }
-    .account-card:hover { border-color: #5865F2; }
-    .account-card-header { background: linear-gradient(135deg, #5865F2 0%, #7289da 100%); padding: 14px 20px; color: #fff; display: flex; align-items: center; justify-content: space-between; }
-    .account-card-header .acc-name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
-    .account-card-body { padding: 20px; }
+    .account-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     .guild-block { background: #252545; border: 1px solid #3b3b6b; border-radius: 8px; padding: 16px; margin-top: 12px; }
     .channel-block { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; padding: 12px; margin-top: 8px; }
     .inline-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
@@ -127,13 +83,7 @@
   </style>
 </head>
 <body>
-<div id="loading" class="loading-fallback">
-    <div>
-      <h2>⏳ 正在加载管理面板...</h2>
-      <p>如果长时间停留在此页面，请检查网络连接后刷新重试</p>
-    </div>
-  </div>
-<div id="app" v-cloak>
+<div id="app">
   <!-- Login -->
   <div v-if="!authenticated" class="login-container">
     <div class="login-box">
@@ -157,43 +107,32 @@
         <span class="title">OpenClaw</span>
       </div>
       <div class="sidebar-nav">
-        <div class="nav-item" :class="{ active: currentPage === 'dashboard' }" @click="currentPage='dashboard'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'dashboard' }" @click="currentPage='dashboard'">
           <i class="fas fa-tachometer-alt"></i><span>仪表盘</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'agents' }" @click="currentPage='agents'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'agents' }" @click="currentPage='agents'">
           <i class="fas fa-robot"></i><span>Agent 管理</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'editor' }" @click="currentPage='editor'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'editor' }" @click="currentPage='editor'">
           <i class="fas fa-file-alt"></i><span>文件编辑器</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'discord' }" @click="currentPage='discord'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'discord' }" @click="currentPage='discord'">
           <i class="fab fa-discord"></i><span>Discord 管理</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'bindings' }" @click="currentPage='bindings'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'bindings' }" @click="currentPage='bindings'">
           <i class="fas fa-link"></i><span>绑定管理</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'hooks' }" @click="currentPage='hooks'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'hooks' }" @click="currentPage='hooks'">
           <i class="fas fa-anchor"></i><span>Hooks 管理</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'skills' }" @click="currentPage='skills'; if(windowWidth<769) sidebarCollapsed=true">
-          <i class="fas fa-puzzle-piece"></i><span>Skills 管理</span>
-        </div>
-        <div class="nav-item" :class="{ active: currentPage === 'gateway' }" @click="currentPage='gateway'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'gateway' }" @click="currentPage='gateway'">
           <i class="fas fa-server"></i><span>Gateway 管理</span>
         </div>
-        <div class="nav-item" :class="{ active: currentPage === 'settings' }" @click="currentPage='settings'; if(windowWidth<769) sidebarCollapsed=true">
+        <div class="nav-item" :class="{ active: currentPage === 'settings' }" @click="currentPage='settings'">
           <i class="fas fa-cog"></i><span>系统设置</span>
         </div>
       </div>
-      <div class="sidebar-footer">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="width:8px;height:8px;border-radius:50%;background:#4caf50"></span>
-          <span style="color:#888">OpenClaw Admin</span>
-        </div>
-        <span>v1.1.0</span>
-      </div>
     </div>
-    <div class="sidebar-overlay" :class="{ show: !sidebarCollapsed && windowWidth < 769 }" @click="sidebarCollapsed=true"></div>
 
     <!-- Main -->
     <div class="main-content">
@@ -210,59 +149,45 @@
       <div class="content-area">
 
         <!-- ==================== Dashboard ==================== -->
-        <div class="page-transition" v-if="currentPage==='dashboard'">
+        <div v-if="currentPage==='dashboard'">
           <h2 class="page-title">📊 仪表盘</h2>
           <el-row :gutter="16">
-            <el-col :xs="12" :sm="6"><div class="stat-card agents">
-              <div class="stat-icon"><i class="fas fa-robot"></i></div>
-              <div class="stat-label">Agent</div>
-              <div class="stat-value">{{ agents.length }}</div>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-robot"></i> Agent</div>
+              <div style="font-size:36px;font-weight:700;color:#4fc3f7">{{ agents.length }}</div>
             </div></el-col>
-            <el-col :xs="12" :sm="6"><div class="stat-card gateway">
-              <div class="stat-icon"><i class="fas fa-server"></i></div>
-              <div class="stat-label">Gateway</div>
-              <div class="stat-value" style="display:flex;align-items:center;gap:8px;font-size:20px">
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-server"></i> Gateway</div>
+              <div style="display:flex;align-items:center;gap:10px">
                 <span class="status-dot" :class="'status-'+gatewayStatus"></span>
-                {{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}
+                <span style="font-size:18px;font-weight:600" :style="{color: gatewayStatus==='running'?'#4caf50':gatewayStatus==='stopped'?'#f44336':'#ff9800'}">{{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}</span>
               </div>
             </div></el-col>
-            <el-col :xs="12" :sm="6"><div class="stat-card discord">
-              <div class="stat-icon"><i class="fab fa-discord"></i></div>
-              <div class="stat-label">Discord 账号</div>
-              <div class="stat-value">{{ discordAccountCount }}</div>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fab fa-discord"></i> Discord 账号</div>
+              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ discordAccountCount }}</div>
             </div></el-col>
-            <el-col :xs="12" :sm="6"><div class="stat-card bindings">
-              <div class="stat-icon"><i class="fas fa-link"></i></div>
-              <div class="stat-label">绑定</div>
-              <div class="stat-value">{{ bindings.length }}</div>
+            <el-col :span="6"><div class="card">
+              <div class="card-header"><i class="fas fa-link"></i> 绑定</div>
+              <div style="font-size:36px;font-weight:700;color:#66bb6a">{{ bindings.length }}</div>
             </div></el-col>
           </el-row>
           <div class="card">
-            <div class="card-header"><i class="fas fa-sliders-h"></i> 配置概览</div>
-            <el-row :gutter="12">
-              <el-col :xs="12" :sm="8" :md="6" v-for="item in configItems" :key="item.label">
-                <div style="background:#14142a;border-radius:8px;padding:14px;margin-bottom:10px;border:1px solid #222244">
-                  <div style="color:#666;font-size:12px;margin-bottom:6px"><i :class="item.icon" style="margin-right:4px"></i> {{ item.label }}</div>
-                  <div style="color:#e0e0e0;font-weight:600;font-size:14px">{{ item.value }}</div>
-                </div>
-              </el-col>
-            </el-row>
-          </div>
-
-          <!-- System Status -->
-          <div class="card">
-            <div class="card-header" style="justify-content:space-between">
-              <span><i class="fas fa-heartbeat"></i> 系统状态</span>
-              <el-button size="small" @click="loadSystemStatus" :loading="systemStatusLoading"><i class="fas fa-sync"></i> 刷新</el-button>
-            </div>
-            <div v-if="systemStatusLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">加载中...</p></div>
-            <div v-else-if="systemStatus" style="font-family:'Fira Code',monospace;font-size:13px;background:#0a0a14;border-radius:8px;padding:16px;color:#aaa;white-space:pre-wrap;max-height:300px;overflow-y:auto;line-height:1.6">{{ formatSystemStatus(systemStatus) }}</div>
-            <div v-else style="text-align:center;padding:30px;color:#666"><i class="fas fa-plug" style="font-size:24px"></i><p style="margin-top:8px">暂无状态数据</p></div>
+            <div class="card-header"><i class="fas fa-info-circle"></i> 配置概览</div>
+            <div class="info-row"><span class="info-label">Gateway 端口</span><span class="info-value">{{ config.gateway?.port || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">Gateway 模式</span><span class="info-value">{{ config.gateway?.mode || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">默认模型</span><span class="info-value">{{ config.agents?.defaults?.model?.primary || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">最大并发</span><span class="info-value">{{ config.agents?.defaults?.maxConcurrent || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">工具权限</span><span class="info-value">{{ config.tools?.profile || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">空闲超时</span><span class="info-value">{{ config.session?.idleMinutes || 0 }} 分钟</span></div>
+            <div class="info-row"><span class="info-label">DM 范围</span><span class="info-value">{{ config.session?.dmScope || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">Discord 全局启用</span><span class="info-value">{{ config.channels?.discord?.enabled ? '✅ 是' : '❌ 否' }}</span></div>
+            <div class="info-row"><span class="info-label">allowBots</span><span class="info-value">{{ config.channels?.discord?.allowBots ? '✅ 是' : '❌ 否' }}</span></div>
           </div>
         </div>
 
         <!-- ==================== Agents ==================== -->
-        <div class="page-transition" v-if="currentPage==='agents'">
+        <div v-if="currentPage==='agents'">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
             <h2 class="page-title" style="margin-bottom:0">🤖 Agent 管理</h2>
             <el-button type="primary" @click="showCreateAgent"><i class="fas fa-plus"></i> 创建 Agent</el-button>
@@ -298,7 +223,7 @@
         </div>
 
         <!-- ==================== File Editor ==================== -->
-        <div class="page-transition" v-if="currentPage==='editor'">
+        <div v-if="currentPage==='editor'">
           <h2 class="page-title">📝 文件编辑器</h2>
           <div class="card">
             <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
@@ -325,7 +250,7 @@
         </div>
 
         <!-- ==================== Discord ==================== -->
-        <div class="page-transition" v-if="currentPage==='discord'">
+        <div v-if="currentPage==='discord'">
           <h2 class="page-title">💬 Discord Bot 管理</h2>
 
           <!-- Global Settings -->
@@ -363,11 +288,10 @@
 
           <!-- Per Account -->
           <div v-for="(acc, accName) in discordGlobal.accounts" :key="accName" class="account-card">
-            <div class="account-card-header">
-              <span class="acc-name"><i class="fab fa-discord"></i> {{ accName }}</span>
-              <el-button size="small" @click="deleteAccount(accName)" style="border:1px solid rgba(255,255,255,0.3);color:#fff;background:transparent"><i class="fas fa-trash"></i></el-button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="card-header" style="margin-bottom:0"><i class="fab fa-discord"></i> {{ accName }}</div>
+              <el-button text type="danger" size="small" @click="deleteAccount(accName)"><i class="fas fa-trash"></i> 删除</el-button>
             </div>
-            <div class="account-card-body">
 
             <el-form label-position="left" label-width="120px" style="max-width:600px">
               <el-form-item label="Token">
@@ -452,7 +376,6 @@
                 </div>
               </div>
             </div>
-            </div>
           </div>
 
           <!-- Dialogs -->
@@ -524,7 +447,7 @@
         </div>
 
         <!-- ==================== Bindings ==================== -->
-        <div class="page-transition" v-if="currentPage==='bindings'">
+        <div v-if="currentPage==='bindings'">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
             <h2 class="page-title" style="margin-bottom:0">🔗 绑定关系管理</h2>
             <el-button type="primary" @click="showAddBinding"><i class="fas fa-plus"></i> 添加绑定</el-button>
@@ -611,7 +534,7 @@
         </div>
 
         <!-- ==================== Hooks ==================== -->
-        <div class="page-transition" v-if="currentPage==='hooks'">
+        <div v-if="currentPage==='hooks'">
           <h2 class="page-title">🪝 Hooks 管理</h2>
           <div class="card">
             <div class="card-header"><i class="fas fa-cog"></i> Hooks 全局开关</div>
@@ -647,107 +570,27 @@
           </div>
         </div>
 
-        <!-- ==================== Skills ==================== -->
-        <div class="page-transition" v-if="currentPage==='skills'">
-          <h2 class="page-title">🧩 Skills 管理</h2>
-
-          <!-- Actions -->
-          <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
-            <el-button type="primary" @click="loadSkills" :loading="skillsLoading"><i class="fas fa-sync"></i> 刷新列表</el-button>
-            <el-button type="success" @click="showInstallDialog"><i class="fas fa-download"></i> 安装 Skill</el-button>
-            <el-button type="warning" @click="updateAllSkills" :loading="skillsUpdating"><i class="fas fa-arrow-up"></i> 全部更新</el-button>
-          </div>
-
-          <!-- Search -->
-          <div class="card" style="margin-bottom:16px">
-            <div style="display:flex;gap:12px;align-items:center">
-              <el-input v-model="skillSearchQuery" placeholder="搜索 ClawHub skills..." clearable style="flex:1" @keyup.enter="searchSkills">
-                <template #prefix><i class="fas fa-search"></i></template>
-              </el-input>
-              <el-button type="primary" @click="searchSkills" :loading="skillSearchLoading"><i class="fas fa-search"></i> 搜索</el-button>
-            </div>
-          </div>
-
-          <!-- Installed Skills -->
-          <div class="card">
-            <div class="card-header"><i class="fas fa-list"></i> 已安装 Skills <el-tag size="small" type="info" style="margin-left:8px">{{ installedSkills.length }}</el-tag></div>
-            <div v-if="skillsLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i></div>
-            <div v-else-if="installedSkills.length === 0" class="empty-state">
-              <i class="fas fa-puzzle-piece"></i>
-              <p>暂无已安装的 Skill</p>
-            </div>
-            <div v-else style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
-              <div v-for="sk in installedSkills" :key="sk.name || sk.slug" style="background:#14142a;border-radius:10px;padding:16px;border:1px solid #222244;transition:border-color 0.2s" @mouseenter="$event.target.style.borderColor='#4fc3f7'" @mouseleave="$event.target.style.borderColor='#222244'">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                  <span style="font-weight:600;color:#4fc3f7;font-size:15px"><i class="fas fa-puzzle-piece" style="margin-right:6px"></i>{{ sk.name || sk.slug }}</span>
-                  <el-button size="small" type="primary" text @click="updateSingleSkill(sk.slug)" :loading="skillUpdatingId===sk.slug"><i class="fas fa-arrow-up"></i></el-button>
-                </div>
-                <div style="color:#888;font-size:12px;line-height:1.6">
-                  <div v-if="sk.version"><i class="fas fa-tag" style="width:14px"></i> 版本: {{ sk.version }}</div>
-                  <div v-if="sk.location"><i class="fas fa-folder" style="width:14px"></i> {{ sk.location }}</div>
-                  <div v-if="sk.description" style="margin-top:4px;color:#666">{{ sk.description }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Search Results -->
-          <div v-if="skillSearchResults.length > 0" class="card">
-            <div class="card-header"><i class="fas fa-globe"></i> 搜索结果 <el-tag size="small" type="info" style="margin-left:8px">{{ skillSearchResults.length }}</el-tag></div>
-            <el-table :data="skillSearchResults" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0}">
-              <el-table-column prop="name" label="名称" width="200">
-                <template #default="{row}"><span style="color:#4fc3f7;font-weight:600">{{ row.name || row.slug }}</span></template>
-              </el-table-column>
-              <el-table-column prop="description" label="描述" />
-              <el-table-column prop="version" label="版本" width="100" />
-              <el-table-column label="操作" width="140">
-                <template #default="{row}">
-                  <el-button type="primary" size="small" @click="installSkill(row.slug)" :loading="skillInstallingId===row.slug"><i class="fas fa-download"></i> 安装</el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-
-          <!-- Install Dialog -->
-          <el-dialog v-model="installDialogVisible" title="安装 Skill" width="450px" :close-on-click-modal="false">
-            <el-form label-position="top">
-              <el-form-item label="Skill Slug">
-                <el-input v-model="installSlug" placeholder="例如: healthcheck" />
-              </el-form-item>
-              <el-form-item label="版本 (可选)">
-                <el-input v-model="installVersion" placeholder="留空安装最新版" />
-              </el-form-item>
-            </el-form>
-            <template #footer>
-              <el-button @click="installDialogVisible=false">取消</el-button>
-              <el-button type="primary" @click="installSkill(installSlug)" :loading="skillInstallingId===installSlug">安装</el-button>
-            </template>
-          </el-dialog>
-        </div>
-
         <!-- ==================== Gateway ==================== -->
-        <div class="page-transition" v-if="currentPage==='gateway'">
+        <div v-if="currentPage==='gateway'">
           <h2 class="page-title">🖥️ Gateway 管理</h2>
-          <div class="gateway-banner" :class="'gw-'+gatewayStatus" style="border-radius:12px;padding:24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
-            <div>
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-                <span class="status-dot" :class="'status-'+gatewayStatus" style="width:14px;height:14px"></span>
-                <span style="font-size:24px;font-weight:700">{{ gatewayStatus==='running'?'Gateway 运行中':gatewayStatus==='stopped'?'Gateway 已停止':'Gateway 状态未知' }}</span>
-              </div>
-              <div style="color:rgba(255,255,255,0.6);font-size:13px">PID: {{ gatewayInfo.pid || '—' }} · 端口: {{ gatewayInfo.port || '—' }} · 运行时间: {{ gatewayInfo.uptime || '—' }}</div>
-            </div>
-            <div style="display:flex;gap:8px">
-              <el-button type="success" @click="gatewayAction('start')" style="border:none"><i class="fas fa-play"></i> 启动</el-button>
-              <el-button type="danger" @click="gatewayAction('stop')" style="border:none"><i class="fas fa-stop"></i> 停止</el-button>
-              <el-button type="warning" @click="gatewayAction('restart')" style="border:none"><i class="fas fa-redo"></i> 重启</el-button>
-              <el-button @click="refreshGateway" style="border:1px solid rgba(255,255,255,0.3);color:#fff;background:transparent"><i class="fas fa-sync"></i> 刷新</el-button>
-            </div>
-          </div>
           <div class="card">
-            <div class="card-header"><i class="fas fa-info-circle"></i> 详细信息</div>
+            <div class="card-header">
+              <span class="status-dot" :class="'status-'+gatewayStatus"></span>
+              Gateway 状态
+            </div>
+            <div class="info-row"><span class="info-label">状态</span><span class="info-value" :style="{color: gatewayStatus==='running'?'#4caf50':gatewayStatus==='stopped'?'#f44336':'#ff9800'}">{{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}</span></div>
+            <div class="info-row"><span class="info-label">PID</span><span class="info-value">{{ gatewayInfo.pid || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">端口</span><span class="info-value">{{ gatewayInfo.port || '—' }}</span></div>
             <div class="info-row"><span class="info-label">模式</span><span class="info-value">{{ gatewayInfo.mode || '—' }}</span></div>
             <div class="info-row"><span class="info-label">绑定</span><span class="info-value">{{ gatewayInfo.bind || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">运行时间</span><span class="info-value">{{ gatewayInfo.uptime || '—' }}</span></div>
             <div class="info-row"><span class="info-label">内存使用</span><span class="info-value">{{ gatewayInfo.memory ? gatewayInfo.memory + '%' : '—' }}</span></div>
+            <div style="margin-top:16px;display:flex;gap:8px">
+              <el-button type="success" @click="gatewayAction('start')"><i class="fas fa-play"></i> 启动</el-button>
+              <el-button type="danger" @click="gatewayAction('stop')"><i class="fas fa-stop"></i> 停止</el-button>
+              <el-button type="warning" @click="gatewayAction('restart')"><i class="fas fa-redo"></i> 重启</el-button>
+              <el-button @click="refreshGateway"><i class="fas fa-sync"></i> 刷新</el-button>
+            </div>
           </div>
           <div v-if="gatewayInfo.info" class="card">
             <div class="card-header"><i class="fas fa-terminal"></i> 详细信息</div>
@@ -756,7 +599,7 @@
         </div>
 
         <!-- ==================== Settings ==================== -->
-        <div class="page-transition" v-if="currentPage==='settings'">
+        <div v-if="currentPage==='settings'">
           <h2 class="page-title">⚙️ 系统设置</h2>
 
           <!-- Session -->
@@ -808,21 +651,10 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@3.4.15/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/dist/index.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="https://unpkg.com/vue@3.4.15/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/element-plus@2.6.0/dist/index.full.min.js"></script>
+<script src="https://unpkg.com/marked@12.0.0/marked.min.js"></script>
 <script>
-// 全局错误捕获
-window.onerror = function(msg, url, line, col, error) {
-  alert('JS错误: ' + msg + ' @ ' + line + ':' + col);
-  console.error(error);
-  return false;
-};
-window.addEventListener('unhandledrejection', function(e) {
-  alert('Promise错误: ' + (e.reason?.message || e.reason));
-});
-if (!window.Vue) { alert('Vue加载失败！请检查网络'); }
-if (!window.ElementPlus) { alert('ElementPlus加载失败！请检查网络'); }
 const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
 const { ElMessage, ElMessageBox } = ElementPlus;
 
@@ -834,25 +666,9 @@ const app = createApp({
     const loginError = ref('');
     const currentPage = ref('dashboard');
     const sidebarCollapsed = ref(false);
-    const windowWidth = ref(window.innerWidth);
-    window.addEventListener('resize', () => { windowWidth.value = window.innerWidth; if (window.innerWidth >= 769) sidebarCollapsed.value = false; });
 
     // Data
     const agents = ref([]);
-    const agentStatus = ref([]);
-    const systemStatus = ref(null);
-    const systemStatusLoading = ref(false);
-    const installedSkills = ref([]);
-    const skillsLoading = ref(false);
-    const skillsUpdating = ref(false);
-    const skillUpdatingId = ref('');
-    const skillSearchQuery = ref('');
-    const skillSearchResults = ref([]);
-    const skillSearchLoading = ref(false);
-    const skillInstallingId = ref('');
-    const installDialogVisible = ref(false);
-    const installSlug = ref('');
-    const installVersion = ref('');
     const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
@@ -981,21 +797,9 @@ const app = createApp({
     });
 
     const pageTitle = computed(() => {
-      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', skills:'Skills 管理', gateway:'Gateway 管理', settings:'系统设置' };
+      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', gateway:'Gateway 管理', settings:'系统设置' };
       return map[currentPage.value] || '';
     });
-
-    const configItems = computed(() => [
-      { label: 'Gateway 端口', value: config.value.gateway?.port || '—', icon: 'fas fa-plug' },
-      { label: 'Gateway 模式', value: config.value.gateway?.mode || '—', icon: 'fas fa-network-wired' },
-      { label: '默认模型', value: config.value.agents?.defaults?.model?.primary || '—', icon: 'fas fa-brain' },
-      { label: '最大并发', value: config.value.agents?.defaults?.maxConcurrent || '—', icon: 'fas fa-layer-group' },
-      { label: '工具权限', value: config.value.tools?.profile || '—', icon: 'fas fa-shield-alt' },
-      { label: '空闲超时', value: (config.value.session?.idleMinutes || 0) + ' 分钟', icon: 'fas fa-clock' },
-      { label: 'DM 范围', value: config.value.session?.dmScope || '—', icon: 'fas fa-envelope' },
-      { label: 'Discord 启用', value: config.value.channels?.discord?.enabled ? '✅ 是' : '❌ 否', icon: 'fab fa-discord' },
-      { label: 'allowBots', value: config.value.channels?.discord?.allowBots ? '✅ 是' : '❌ 否', icon: 'fas fa-robot' },
-    ]);
 
     const renderedMarkdown = computed(() => {
       try { return marked.parse(editorContent.value || ''); } catch { return ''; }
@@ -1022,17 +826,6 @@ const app = createApp({
     function displayName(type, id) {
       const name = labels[type]?.[id];
       return name ? `${name} (${id})` : id;
-    }
-
-    function timeAgo(iso) {
-      if (!iso) return '未知';
-      const diff = Date.now() - new Date(iso).getTime();
-      const m = Math.floor(diff / 60000);
-      if (m < 1) return '刚刚';
-      if (m < 60) return m + ' 分钟前';
-      const h = Math.floor(m / 60);
-      if (h < 24) return h + ' 小时前';
-      return Math.floor(h / 24) + ' 天前';
     }
 
     function saveGuildLabel(guildId, name) {
@@ -1064,7 +857,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l, st, sys, sk] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -1072,15 +865,9 @@ const app = createApp({
           api('/config').catch(() => ({})),
           api('/gateway/status').catch(() => ({})),
           api('/settings').catch(() => ({})),
-          api('/labels').catch(() => ({guilds:{},channels:{}})),
-          api('/agents/status').catch(() => []),
-          api('/system/status').catch(() => null),
-          api('/skills').catch(() => [])
+          api('/labels').catch(() => ({guilds:{},channels:{}}))
         ]);
         agents.value = a || [];
-        agentStatus.value = st || [];
-        systemStatus.value = sys;
-        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
@@ -1288,58 +1075,6 @@ const app = createApp({
       } catch (e) { ElMessage.error(e.message); }
     }
 
-    // === System Status ===
-    async function loadSystemStatus() {
-      systemStatusLoading.value = true;
-      try { systemStatus.value = await api('/system/status'); } catch (e) { ElMessage.error('获取状态失败: ' + e.message); }
-      systemStatusLoading.value = false;
-    }
-    function formatSystemStatus(data) {
-      return JSON.stringify(data, null, 2);
-    }
-
-    // === Skills ===
-    async function loadSkills() {
-      skillsLoading.value = true;
-      try {
-        const sk = await api('/skills');
-        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
-      } catch (e) { ElMessage.error('加载 Skills 失败: ' + e.message); }
-      skillsLoading.value = false;
-    }
-    function showInstallDialog() { installSlug.value = ''; installVersion.value = ''; installDialogVisible.value = true; }
-    async function installSkill(slug) {
-      if (!slug) return ElMessage.warning('请输入 Skill slug');
-      skillInstallingId.value = slug;
-      try {
-        await api('/skills/install', { method: 'POST', body: { slug, version: installVersion.value || undefined } });
-        ElMessage.success('安装成功'); installDialogVisible.value = false; loadSkills();
-      } catch (e) { ElMessage.error('安装失败: ' + e.message); }
-      skillInstallingId.value = '';
-    }
-    async function updateSingleSkill(slug) {
-      skillUpdatingId.value = slug;
-      try { await api('/skills/update', { method: 'POST', body: { slug } }); ElMessage.success('更新成功'); loadSkills(); }
-      catch (e) { ElMessage.error('更新失败: ' + e.message); }
-      skillUpdatingId.value = '';
-    }
-    async function updateAllSkills() {
-      skillsUpdating.value = true;
-      try { await api('/skills/update', { method: 'POST', body: {} }); ElMessage.success('全部更新成功'); loadSkills(); }
-      catch (e) { ElMessage.error('更新失败: ' + e.message); }
-      skillsUpdating.value = false;
-    }
-    async function searchSkills() {
-      if (!skillSearchQuery.value.trim()) return;
-      skillSearchLoading.value = true;
-      try {
-        const r = await api('/skills/search?q=' + encodeURIComponent(skillSearchQuery.value));
-        skillSearchResults.value = Array.isArray(r) ? r : (r?.skills || r?.results || []);
-        if (skillSearchResults.value.length === 0) ElMessage.info('未找到相关 Skill');
-      } catch (e) { ElMessage.error('搜索失败: ' + e.message); }
-      skillSearchLoading.value = false;
-    }
-
     // Init
     onMounted(async () => {
       try {
@@ -1350,8 +1085,8 @@ const app = createApp({
     });
 
     return {
-      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed, windowWidth,
-      agents, agentStatus, systemStatus, systemStatusLoading, installedSkills, skillsLoading, skillsUpdating, skillUpdatingId, skillSearchQuery, skillSearchResults, skillSearchLoading, skillInstallingId, installDialogVisible, installSlug, installVersion, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
+      agents, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
@@ -1361,8 +1096,8 @@ const app = createApp({
       addChannelDialog, newChannelId, newChannelAllow, newChannelRequireMention, addChannelAccountName, addChannelGuildId,
       addUserDialog, newUserId, addUserAccountName, addUserGuildId,
       addBindingDialog, newBinding,
-      discordAccountCount, discordAccountNames, bindingByGuild, unboundAccounts, hooksList, pageTitle, configItems,
-      maskToken, displayName, timeAgo, saveGuildLabel, saveChannelLabel,
+      discordAccountCount, discordAccountNames, bindingByGuild, unboundAccounts, hooksList, pageTitle,
+      maskToken, displayName, saveGuildLabel, saveChannelLabel,
       login, logout, loadAll,
       showCreateAgent, createAgent, deleteAgent, editAgent,
       loadFile, saveFile,
@@ -1373,7 +1108,6 @@ const app = createApp({
       openAddUser, createUser, deleteUser,
       showAddBinding, addBinding, removeBinding, getBindingAgent, setBindingAgent,
       toggleHook, saveHooks,
-      loadSystemStatus, formatSystemStatus, loadSkills, showInstallDialog, installSkill, updateSingleSkill, updateAllSkills, searchSkills,
       gatewayAction, refreshGateway,
       saveSettings
     };
@@ -1382,7 +1116,6 @@ const app = createApp({
 
 app.use(ElementPlus);
 app.mount('#app');
-document.getElementById('loading')?.remove();
 </script>
 </body>
 </html>
