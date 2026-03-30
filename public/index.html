@@ -212,11 +212,11 @@
                            @mouseleave="$event.currentTarget.style.borderColor='#3a3a5a'">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
                           <div style="display:flex;align-items:center;gap:8px">
-                            <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'" style="width:10px;height:10px"></span>
+                            <span class="status-dot" :class="getAgentStatus(agent.agentId)?.connected ? 'status-running' : 'status-stopped'" style="width:10px;height:10px"></span>
                             <span style="font-weight:600;color:#e0e0e0;font-size:15px">{{ agent.displayName || agent.agentId }}</span>
                           </div>
-                          <el-tag size="small" :type="getAgentStatus(agent.agentId)?.enabled ? 'success' : 'info'">
-                            {{ getAgentStatus(agent.agentId)?.enabled ? '在线' : '离线' }}
+                          <el-tag size="small" :type="getAgentStatus(agent.agentId)?.connected ? 'success' : 'info'">
+                            {{ getAgentStatus(agent.agentId)?.connected ? '在线' : '离线' }}
                           </el-tag>
                         </div>
                         <div style="font-size:12px;color:#888;margin-bottom:6px">
