@@ -235,14 +235,29 @@ app.get('/api/agents/status', requireAuth, (req, res) => {
   try {
     const output = execSync('openclaw status --json 2>&1', { timeout: 15000 });
     const status = JSON.parse(output);
-    // 返回心跳状态作为Agent状态
-    const agentStatus = (status.heartbeat?.agents || []).map(a => ({
-      agentId: a.agentId,
-      enabled: a.enabled,
-      every: a.every,
-      everyMs: a.everyMs
-    }));
-    res.json({ agents: agentStatus, defaultAgentId: status.heartbeat?.defaultAgentId });
+    
+    // 从Gateway获取真实运行状态
+    let gatewayAgents = [];
+    try {
+      const gwOutput = execSync('openclaw gateway status --json 2>&1', { timeout: 5000 });
+      const gwStatus = JSON.parse(gwOutput);
+      // Gateway返回的agents包含真实的运行状态
+      gatewayAgents = (gwStatus.agents || []).map(a => ({
+        agentId: a.agentId || a.id,
+        status: a.status || 'unknown'
+      }));
+    } catch (e) {
+      // 如果Gateway不可用，使用heartbeat状态
+      gatewayAgents = (status.heartbeat?.agents || []).map(a => ({
+        agentId: a.agentId,
+        status: a.enabled ? 'running' : 'stopped'
+      }));
+    }
+    
+    res.json({ 
+      agents: gatewayAgents, 
+      defaultAgentId: status.heartbeat?.defaultAgentId 
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -266,6 +281,13 @@ app.get('/api/agents/:id/info', requireAuth, (req, res) => {
       const content = fs.readFileSync(identityPath, 'utf8');
       const match = content.match(/\*\*Name:\*\*\s*(.+)/);
       if (match) displayName = match[1].trim();
+    }
+    
+    // 读取HEARTBEAT.md内容
+    let heartbeatDoc = '';
+    const heartbeatPath = path.join(wsPath, 'HEARTBEAT.md');
+    if (fs.existsSync(heartbeatPath)) {
+      heartbeatDoc = fs.readFileSync(heartbeatPath, 'utf8');
     }
     
     // 从sessions获取技能列表
@@ -302,6 +324,7 @@ app.get('/api/agents/:id/info', requireAuth, (req, res) => {
       displayName,
       workspace: wsPath,
       skills,
+      heartbeatDoc,
       discordAccount,
       binding,
       heartbeat: heartbeat || { enabled: false }
@@ -315,10 +338,24 @@ app.get('/api/agents/:id/info', requireAuth, (req, res) => {
 app.get('/api/agents/:id/sessions', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const output = execSync(`openclaw sessions --agent ${id} --json 2>&1`, { timeout: 10000 });
-    res.json(JSON.parse(output));
+    const sessionsPath = path.join(CONFIG_PATH, '../agents', id, 'sessions/sessions.json');
+    
+    if (!fs.existsSync(sessionsPath)) {
+      return res.json({ stores: [] });
+    }
+    
+    const sessions = JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
+    const stores = Object.entries(sessions).map(([key, data]) => ({
+      storeKey: key,
+      messageCount: data.messageCount || 0,
+      lastUpdated: data.updatedAt ? new Date(data.updatedAt).toISOString() : null,
+      groupId: data.groupId,
+      groupChannel: data.groupChannel
+    }));
+    
+    res.json({ stores });
   } catch (e) {
-    res.json({ stores: [] });
+    res.json({ stores: [], error: e.message });
   }
 });
 
@@ -397,20 +434,35 @@ app.get('/api/agents/:id/logs', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
     const lines = parseInt(req.query.lines) || 100;
-    const logDir = path.join(CONFIG_PATH, '../agents', id, 'logs');
     
-    if (!fs.existsSync(logDir)) {
-      return res.json({ logs: [], message: '暂无日志' });
+    // 日志可能在多个位置
+    const logPaths = [
+      path.join(CONFIG_PATH, '../logs'),  // 全局日志
+      path.join(CONFIG_PATH, '../agents', id, 'logs'),  // Agent特定日志
+      path.join(CONFIG_PATH, '../workspace-' + id, 'logs')  // workspace日志
+    ];
+    
+    let logs = [];
+    let logFile = null;
+    
+    for (const logDir of logPaths) {
+      if (fs.existsSync(logDir)) {
+        const files = fs.readdirSync(logDir).filter(f => f.endsWith('.log') || f.endsWith('.jsonl')).sort().reverse();
+        if (files.length > 0) {
+          const latestLog = path.join(logDir, files[0]);
+          const content = execSync(`tail -n ${lines} "${latestLog}"`, { encoding: 'utf8' });
+          logs = content.split('\n').filter(l => l.trim());
+          logFile = files[0];
+          break;
+        }
+      }
     }
     
-    const files = fs.readdirSync(logDir).filter(f => f.endsWith('.log')).sort().reverse();
-    if (files.length === 0) {
-      return res.json({ logs: [], message: '暂无日志文件' });
+    if (logs.length > 0) {
+      res.json({ logs, file: logFile });
+    } else {
+      res.json({ logs: [], message: '暂无日志文件' });
     }
-    
-    const latestLog = path.join(logDir, files[0]);
-    const content = execSync(`tail -n ${lines} "${latestLog}"`, { encoding: 'utf8' });
-    res.json({ logs: content.split('\n'), file: files[0] });
   } catch (e) {
     res.json({ logs: [], error: e.message });
   }

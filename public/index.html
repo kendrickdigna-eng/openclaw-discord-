@@ -258,13 +258,17 @@
             <!-- 2. 改技能 -->
             <el-tab-pane label="🎯 改技能">
               <div style="padding:12px">
-                <div style="margin-bottom:12px;color:#888">当前启用的技能（来自 sessions.json）：</div>
+                <div style="margin-bottom:12px;color:#888">当前启用的技能（来自运行时快照）：</div>
                 <div v-if="agentDetail.skills && agentDetail.skills.length > 0" style="display:flex;flex-wrap:wrap;gap:8px">
-                  <el-tag v-for="skill in agentDetail.skills" :key="skill" type="warning" size="large">{{ skill }}</el-tag>
+                  <el-tag v-for="skill in agentDetail.skills" :key="skill" type="warning" size="large" closable @close="disableSkill(skill)">{{ skill }}</el-tag>
                 </div>
                 <div v-else style="color:#666">暂无技能数据</div>
+                <div style="margin-top:16px">
+                  <el-input v-model="newSkillName" placeholder="输入技能名称" style="width:200px" />
+                  <el-button type="primary" @click="enableSkill" style="margin-left:8px">启用技能</el-button>
+                </div>
                 <div style="margin-top:16px;color:#888">
-                  <i class="fas fa-info-circle"></i> 技能配置在 workspace 目录的 AGENTS.md 或 openclaw.json 中
+                  <i class="fas fa-info-circle"></i> 技能通过修改 AGENTS.md 中的 skills 配置来管理
                 </div>
               </div>
             </el-tab-pane>
@@ -331,6 +335,14 @@
                 </el-form>
                 <div style="margin-top:12px;color:#888">
                   <i class="fas fa-info-circle"></i> 心跳间隔决定 Agent 自动检查任务的频率
+                </div>
+                
+                <!-- HEARTBEAT.md 文档 -->
+                <div v-if="agentDetail.heartbeatDoc" style="margin-top:24px">
+                  <div style="font-size:14px;font-weight:600;color:#e0e0e0;margin-bottom:8px">
+                    <i class="fas fa-file-alt"></i> HEARTBEAT.md
+                  </div>
+                  <pre style="background:#141414;padding:12px;border-radius:6px;max-height:300px;overflow-y:auto;font-size:12px;color:#aaa;white-space:pre-wrap">{{ agentDetail.heartbeatDoc }}</pre>
                 </div>
               </div>
             </el-tab-pane>
@@ -848,6 +860,7 @@ const app = createApp({
     const agentSessions = ref([]);
     const agentHeartbeat = reactive({ enabled: false, every: '30m' });
     const newDetailBinding = ref('');
+    const newSkillName = ref('');
 
     // Editor
     const editorAgent = ref('');
@@ -1142,6 +1155,17 @@ const app = createApp({
       } catch (e) { ElMessage.error(e.message); }
     }
 
+    // === 技能管理（通过编辑AGENTS.md实现）===
+    async function enableSkill() {
+      if (!newSkillName.value.trim()) return;
+      ElMessage.info('请在"改配置"tab中编辑AGENTS.md来添加技能配置');
+      newSkillName.value = '';
+    }
+
+    async function disableSkill(skillName) {
+      ElMessage.info('请在"改配置"tab中编辑AGENTS.md来移除技能配置');
+    }
+
     // === Agent CRUD ===
     function showCreateAgent() { newAgentId.value = ''; createAgentDialog.value = true; }
     async function createAgent() {
@@ -1344,8 +1368,8 @@ const app = createApp({
       agents, agentStatus, channelGroups, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       // Agent Detail
-      currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding,
-      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, updateDetailBinding,
+      currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding, newSkillName,
+      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, updateDetailBinding, enableSkill, disableSkill,
       // Editor
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,
