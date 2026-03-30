@@ -131,6 +131,22 @@ app.post('/api/skills/update', requireAuth, (req, res) => {
   }
 });
 
+app.delete('/api/skills/:name', requireAuth, (req, res) => {
+  try {
+    const { name } = req.params;
+    // 删除workspace中的技能目录
+    const wsPath = path.join(WORKSPACES_DIR, 'workspace-godmode', 'skills', name);
+    if (fs.existsSync(wsPath)) {
+      fs.rmSync(wsPath, { recursive: true, force: true });
+      res.json({ success: true, message: `技能 ${name} 已删除` });
+    } else {
+      res.status(404).json({ error: '技能不存在或为系统内置技能' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ Agent Management ============
 app.get('/api/agents', requireAuth, (req, res) => {
   try {
@@ -215,71 +231,35 @@ app.delete('/api/agents/:id', requireAuth, (req, res) => {
 // ============ Skills 管理 ============
 app.get('/api/skills', requireAuth, (req, res) => {
   try {
-    const output = execSync('openclaw skills check --json 2>&1', { 
+    const output = execSync('openclaw skills list --json 2>&1', { 
       timeout: 15000,
       encoding: 'utf8'
     });
     const data = JSON.parse(output);
     
     // 格式化技能列表
-    const skills = [];
-    
-    // 已就绪的技能
-    for (const name of (data.eligible || [])) {
-      skills.push({
-        name,
-        status: 'eligible',
-        statusLabel: '🟢 可用',
-        eligible: true,
-        disabled: false,
-        blocked: false,
-        missingReqs: []
-      });
-    }
-    
-    // 缺少依赖的技能
-    for (const item of (data.missingRequirements || [])) {
-      skills.push({
-        name: item.name,
-        status: 'missing',
-        statusLabel: '🟠 缺依赖',
-        eligible: false,
-        disabled: false,
-        blocked: false,
-        missingReqs: Object.keys(item.missing || {}),
-        installOptions: item.install || []
-      });
-    }
-    
-    // 已禁用的技能
-    for (const name of (data.disabled || [])) {
-      skills.push({
-        name,
-        status: 'disabled',
-        statusLabel: '⚪ 已禁用',
-        eligible: false,
-        disabled: true,
-        blocked: false,
-        missingReqs: []
-      });
-    }
-    
-    // 被阻止的技能
-    for (const item of (data.blocked || [])) {
-      skills.push({
-        name: typeof item === 'string' ? item : item.name,
-        status: 'blocked',
-        statusLabel: '🔴 被阻止',
-        eligible: false,
-        disabled: false,
-        blocked: true,
-        missingReqs: []
-      });
-    }
+    const skills = (data.skills || []).map(s => ({
+      name: s.name,
+      status: s.eligible ? 'eligible' : s.disabled ? 'disabled' : s.blockedByAllowlist ? 'blocked' : 'missing',
+      statusLabel: s.eligible ? '🟢 可用' : s.disabled ? '⚪ 已禁用' : s.blockedByAllowlist ? '🔴 被阻止' : '🟠 缺依赖',
+      eligible: s.eligible,
+      disabled: s.disabled,
+      blocked: s.blockedByAllowlist,
+      missingReqs: Object.keys(s.missing || {}),
+      source: s.source || 'unknown',
+      bundled: s.bundled || false,
+      description: s.description || '',
+      emoji: s.emoji || ''
+    }));
     
     res.json({ 
       skills,
-      summary: data.summary || {}
+      summary: {
+        total: skills.length,
+        eligible: skills.filter(s => s.eligible).length,
+        disabled: skills.filter(s => s.disabled).length,
+        missingRequirements: skills.filter(s => s.status === 'missing').length
+      }
     });
   } catch (e) {
     res.status(500).json({ error: e.message, skills: [] });
