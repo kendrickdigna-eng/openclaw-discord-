@@ -76,6 +76,123 @@ app.get('/api/auth/check', (req, res) => {
   res.json({ authenticated: !!req.session.authenticated });
 });
 
+// ============ Agent Status ============
+function getAgentStatus(agentId) {
+  const agentsDir = path.join(WORKSPACES_DIR, '..', 'agents');
+  const agentDir = path.join(agentsDir, agentId);
+  const sessionsFile = path.join(agentDir, 'sessions', 'sessions.json');
+  
+  const status = {
+    id: agentId,
+    online: false,
+    lastActive: null,
+    skills: [],
+    activeSessions: 0,
+    collaborations: []
+  };
+  
+  // Read sessions.json for status and skills
+  if (fs.existsSync(sessionsFile)) {
+    try {
+      const sessions = JSON.parse(fs.readFileSync(sessionsFile, 'utf8'));
+      const sessionKeys = Object.keys(sessions);
+      status.activeSessions = sessionKeys.length;
+      
+      // Check for recent activity (within 5 minutes)
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      for (const key of sessionKeys) {
+        const sess = sessions[key];
+        if (sess.updatedAt) {
+          const lastUpdate = new Date(sess.updatedAt);
+          if (!status.lastActive || sess.updatedAt > status.lastActive) {
+            status.lastActive = sess.updatedAt;
+          }
+          if (now - sess.updatedAt < fiveMinutes) {
+            status.online = true;
+          }
+        }
+        // Extract skills from first session that has them
+        if (!status.skills.length && sess.skillsSnapshot?.skills) {
+          status.skills = sess.skillsSnapshot.skills.map(s => s.name);
+        }
+      }
+      
+      if (status.lastActive) {
+        status.lastActive = new Date(status.lastActive).toISOString();
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+  
+  return status;
+}
+
+function getCollaborations() {
+  const runsFile = path.join(WORKSPACES_DIR, '..', 'subagents', 'runs.json');
+  const collaborations = {};
+  
+  if (fs.existsSync(runsFile)) {
+    try {
+      const runs = JSON.parse(fs.readFileSync(runsFile, 'utf8'));
+      if (runs.runs) {
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        for (const [runId, run] of Object.entries(runs.runs)) {
+          // Only consider recent runs (within 1 hour) as active collaborations
+          if (run.endedAt && (now - run.endedAt > oneHour)) continue;
+          if (!run.endedAt && run.startedAt && (now - run.startedAt > oneHour)) continue;
+          
+          // Extract agent IDs from session keys
+          const controllerMatch = run.controllerSessionKey?.match(/agent:([^:]+):/);
+          const childMatch = run.childSessionKey?.match(/agent:([^:]+):/);
+          
+          if (controllerMatch && childMatch) {
+            const controller = controllerMatch[1];
+            const child = childMatch[1];
+            
+            if (!collaborations[controller]) collaborations[controller] = [];
+            if (!collaborations[controller].includes(child)) {
+              collaborations[controller].push(child);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+  
+  return collaborations;
+}
+
+app.get('/api/agents/status', requireAuth, (req, res) => {
+  try {
+    const config = readConfig();
+    const agentList = config.agents?.list || [];
+    const collaborations = getCollaborations();
+    const statuses = [];
+    
+    // Add main workspace
+    statuses.push(getAgentStatus('main'));
+    
+    // Add all agents
+    for (const entry of agentList) {
+      const agentId = typeof entry === 'string' ? entry : entry.id;
+      const status = getAgentStatus(agentId);
+      status.collaborations = collaborations[agentId] || [];
+      statuses.push(status);
+    }
+    
+    res.json(statuses);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ Agent Management ============
 app.get('/api/agents', requireAuth, (req, res) => {
   try {
