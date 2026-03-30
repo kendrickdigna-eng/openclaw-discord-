@@ -164,25 +164,52 @@
               </div>
             </div></el-col>
             <el-col :span="6"><div class="card">
-              <div class="card-header"><i class="fab fa-discord"></i> Discord 账号</div>
-              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ discordAccountCount }}</div>
+              <div class="card-header"><i class="fab fa-discord"></i> 频道组</div>
+              <div style="font-size:36px;font-weight:700;color:#5865F2">{{ channelGroups.length }}</div>
             </div></el-col>
             <el-col :span="6"><div class="card">
               <div class="card-header"><i class="fas fa-link"></i> 绑定</div>
               <div style="font-size:36px;font-weight:700;color:#66bb6a">{{ bindings.length }}</div>
             </div></el-col>
           </el-row>
-          <div class="card">
-            <div class="card-header"><i class="fas fa-info-circle"></i> 配置概览</div>
-            <div class="info-row"><span class="info-label">Gateway 端口</span><span class="info-value">{{ config.gateway?.port || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">Gateway 模式</span><span class="info-value">{{ config.gateway?.mode || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">默认模型</span><span class="info-value">{{ config.agents?.defaults?.model?.primary || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">最大并发</span><span class="info-value">{{ config.agents?.defaults?.maxConcurrent || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">工具权限</span><span class="info-value">{{ config.tools?.profile || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">空闲超时</span><span class="info-value">{{ config.session?.idleMinutes || 0 }} 分钟</span></div>
-            <div class="info-row"><span class="info-label">DM 范围</span><span class="info-value">{{ config.session?.dmScope || '—' }}</span></div>
-            <div class="info-row"><span class="info-label">Discord 全局启用</span><span class="info-value">{{ config.channels?.discord?.enabled ? '✅ 是' : '❌ 否' }}</span></div>
-            <div class="info-row"><span class="info-label">allowBots</span><span class="info-value">{{ config.channels?.discord?.allowBots ? '✅ 是' : '❌ 否' }}</span></div>
+
+          <!-- 按频道分组的Agent -->
+          <div class="card" style="margin-top:20px">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+              <span><i class="fas fa-layer-group"></i> 按频道分组的 Agent</span>
+              <el-button size="small" @click="loadAll"><i class="fas fa-sync"></i> 刷新</el-button>
+            </div>
+            <div v-if="channelGroups.length === 0" style="color:#888;text-align:center;padding:40px">
+              暂无频道绑定数据
+            </div>
+            <div v-else>
+              <div v-for="group in channelGroups" :key="group.channel" style="margin-bottom:20px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #2a2a4a">
+                  <i class="fab fa-discord" style="color:#5865F2;font-size:20px"></i>
+                  <span style="font-weight:600;font-size:16px;color:#e0e0e0">{{ group.channel }}</span>
+                  <el-tag size="small" type="info">{{ group.agents.length }} 个Agent</el-tag>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+                  <div v-for="agent in group.agents" :key="agent.agentId" 
+                       class="agent-card" 
+                       style="background:#252545;border-radius:8px;padding:12px;cursor:pointer;border:1px solid #3a3a5a;transition:all 0.2s"
+                       @click="editAgent(agent.agentId)"
+                       @mouseenter="$event.currentTarget.style.borderColor='#4fc3f7'"
+                       @mouseleave="$event.currentTarget.style.borderColor='#3a3a5a'">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                      <span style="font-weight:600;color:#e0e0e0">{{ agent.agentId }}</span>
+                      <span class="status-dot" :class="getAgentStatus(agent.agentId)?.enabled ? 'status-running' : 'status-stopped'"></span>
+                    </div>
+                    <div style="font-size:12px;color:#888">
+                      Account: {{ agent.accountId || '—' }}
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-top:4px">
+                      心跳: {{ getAgentStatus(agent.agentId)?.every || 'disabled' }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -669,6 +696,8 @@ const app = createApp({
 
     // Data
     const agents = ref([]);
+    const agentStatus = ref([]);  // Agent状态（从heartbeat获取）
+    const channelGroups = ref([]); // 按频道分组的Agent
     const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
@@ -857,7 +886,7 @@ const app = createApp({
     // Load all
     async function loadAll() {
       try {
-        const [a, disc, b, h, c, gw, s, l] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, ch, st] = await Promise.all([
           api('/agents').catch(() => []),
           api('/discord').catch(() => ({})),
           api('/bindings').catch(() => []),
@@ -865,9 +894,13 @@ const app = createApp({
           api('/config').catch(() => ({})),
           api('/gateway/status').catch(() => ({})),
           api('/settings').catch(() => ({})),
-          api('/labels').catch(() => ({guilds:{},channels:{}}))
+          api('/labels').catch(() => ({guilds:{},channels:{}})),
+          api('/discord/channels').catch(() => ({channels:[]})),
+          api('/agents/status').catch(() => ({agents:[]}))
         ]);
         agents.value = a || [];
+        agentStatus.value = st.agents || [];
+        channelGroups.value = ch.channels || [];
         Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
         hooksData.enabled = h.enabled ?? true;
@@ -885,6 +918,11 @@ const app = createApp({
         labels.guilds = l.guilds || {};
         labels.channels = l.channels || {};
       } catch (e) { console.error(e); }
+    }
+
+    // 获取Agent状态
+    function getAgentStatus(agentId) {
+      return agentStatus.value.find(a => a.agentId === agentId);
     }
 
     // === Agent CRUD ===

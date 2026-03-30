@@ -225,6 +225,47 @@ app.delete('/api/agents/:id', requireAuth, (req, res) => {
   }
 });
 
+// ============ Agent Status ============
+app.get('/api/agents/status', requireAuth, (req, res) => {
+  try {
+    const output = execSync('openclaw status --json 2>&1', { timeout: 15000 });
+    const status = JSON.parse(output);
+    // 返回心跳状态作为Agent状态
+    const agentStatus = (status.heartbeat?.agents || []).map(a => ({
+      agentId: a.agentId,
+      enabled: a.enabled,
+      every: a.every,
+      everyMs: a.everyMs
+    }));
+    res.json({ agents: agentStatus, defaultAgentId: status.heartbeat?.defaultAgentId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============ Discord Channels (从bindings提取) ============
+app.get('/api/discord/channels', requireAuth, (req, res) => {
+  try {
+    const config = readConfig();
+    const bindings = config.bindings || [];
+    
+    // 按channel分组
+    const channels = {};
+    bindings.forEach(b => {
+      const ch = b.match?.channel || 'unknown';
+      if (!channels[ch]) channels[ch] = { channel: ch, agents: [] };
+      channels[ch].agents.push({
+        agentId: b.agentId,
+        accountId: b.match?.accountId || ''
+      });
+    });
+    
+    res.json({ channels: Object.values(channels), discordEnabled: config.plugins?.entries?.discord?.enabled !== false });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============ File Editor ============
 app.get('/api/agents/:id/files/:filename', requireAuth, (req, res) => {
   try {
