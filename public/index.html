@@ -1,242 +1,1388 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OpenClaw 管理后台</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.4.4/dist/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/dist/index.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/theme-chalk/dark/css-vars.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
   <style>
+    [v-cloak] { display: none !important; }
+    .loading-fallback { display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a1a; color: #e0e0e0; font-family: sans-serif; text-align: center; padding: 20px; }
+    .loading-fallback h2 { font-size: 20px; margin-bottom: 8px; }
+    .loading-fallback p { color: #888; font-size: 14px; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a1a; color: #e0e0e0; }
-    .login-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .login-box { background: #1a1a2e; padding: 40px; border-radius: 16px; width: 400px; text-align: center; border: 1px solid #2a2a4a; }
-    .login-box h1 { font-size: 24px; margin-bottom: 8px; }
-    .login-box p { color: #888; margin-bottom: 24px; }
-    .login-box .logo { font-size: 48px; margin-bottom: 16px; }
-    .layout { display: flex; height: 100vh; }
-    .sidebar { width: 220px; background: #1a1a2e; border-right: 1px solid #2a2a4a; display: flex; flex-direction: column; }
-    .sidebar-header { padding: 16px; border-bottom: 1px solid #2a2a4a; font-size: 18px; font-weight: 600; }
-    .sidebar-nav { flex: 1; padding: 8px; }
-    .nav-item { padding: 12px 16px; cursor: pointer; border-radius: 8px; margin-bottom: 4px; color: #aaa; display: flex; align-items: center; gap: 10px; }
+    html, body, #app { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .dark { --el-bg-color: #141414; --el-bg-color-overlay: #1d1d1d; --el-menu-bg-color: #141414; }
+    .layout-container { display: flex; height: 100vh; }
+    .sidebar { width: 220px; background: #1a1a2e; color: #e0e0e0; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; overflow: hidden; }
+    .sidebar.collapsed { width: 64px; }
+    .sidebar-header { padding: 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #2a2a4a; }
+    .sidebar-header .logo { font-size: 20px; }
+    .sidebar-header .title { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; }
+    .sidebar.collapsed .sidebar-header .title { display: none; }
+    .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer; color: #aaa; transition: all 0.2s; white-space: nowrap; text-decoration: none; border-radius: 0 6px 6px 0; margin: 2px 8px 2px 0; border-left: 3px solid transparent; }
     .nav-item:hover { background: #252545; color: #e0e0e0; }
-    .nav-item.active { background: #3a3a6a; color: #fff; }
-    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .topbar { height: 50px; background: #1a1a2e; border-bottom: 1px solid #2a2a4a; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
-    .content { flex: 1; padding: 20px; overflow-y: auto; }
-    .card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; }
-    .card h3 { margin-bottom: 16px; font-size: 16px; }
-    .stat-row { display: flex; gap: 16px; flex-wrap: wrap; }
-    .stat-card { background: linear-gradient(135deg, #1a237e, #283593); border-radius: 12px; padding: 20px; flex: 1; min-width: 150px; color: #fff; }
-    .stat-card .label { font-size: 13px; opacity: 0.8; margin-bottom: 8px; }
-    .stat-card .value { font-size: 28px; font-weight: 700; }
-    .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #2a2a4a; }
+    .nav-item.active { background: linear-gradient(90deg, #252560 0%, #1d1d2e 100%); color: #fff; border-left-color: #7c4dff; }
+    .nav-item i { width: 20px; text-align: center; font-size: 16px; flex-shrink: 0; }
+    .sidebar.collapsed .nav-item span { display: none; }
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid #2a2a4a; font-size: 12px; color: #555; white-space: nowrap; }
+    .sidebar.collapsed .sidebar-footer { display: none; }
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: 48px; background: #1a1a2e; border-bottom: 1px solid #2a2a4a; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .toggle-btn { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; padding: 4px; }
+    .toggle-btn:hover { color: #fff; }
+    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #0f0f1a; position: relative; }
+    .page-transition { animation: fadeSlideIn 0.3s ease; }
+    @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    .sidebar-overlay.show { display: block; }
+    .page-title { font-size: 22px; font-weight: 600; margin-bottom: 20px; color: #e0e0e0; }
+    .card { background: #1d1d2e; border-radius: 10px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2a4a; transition: border-color 0.2s, box-shadow 0.2s; }
+    .card:hover { border-color: #3b3b6b; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .stat-card { border-radius: 12px; padding: 20px; color: #fff; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+    .stat-card .stat-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 48px; opacity: 0.15; }
+    .stat-card .stat-label { font-size: 13px; opacity: 0.8; margin-bottom: 8px; }
+    .stat-card .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-card.agents { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); }
+    .stat-card.gateway { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
+    .stat-card.discord { background: linear-gradient(135deg, #4a148c 0%, #6a1b9a 100%); }
+    .stat-card.bindings { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
+    .gateway-banner { color: #fff; }
+    .gateway-banner.gw-running { background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); }
+    .gateway-banner.gw-stopped { background: linear-gradient(135deg, #b71c1c 0%, #c62828 100%); }
+    .gateway-banner.gw-unknown { background: linear-gradient(135deg, #e65100 0%, #f57c00 100%); }
+    .agent-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .agent-status-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+    .agent-status-card:hover { border-color: #4fc3f7; transform: translateY(-2px); }
+    .agent-status-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .agent-status-header .agent-name { font-size: 16px; font-weight: 600; color: #e0e0e0; display: flex; align-items: center; gap: 8px; }
+    .agent-status-body { padding: 0 20px 16px; }
+    .agent-status-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; color: #999; font-size: 13px; }
+    .agent-status-row i { width: 16px; text-align: center; color: #666; }
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .online-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    .online-dot.offline { background: #666; }
+    .collab-tag { display: inline-flex; align-items: center; gap: 4px; background: #252545; padding: 2px 8px; border-radius: 10px; font-size: 12px; color: #aaa; margin: 2px; }
+    .skill-tag { display: inline-block; background: #1a237e; color: #7986cb; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin: 2px; }
+    .time-ago { color: #555; font-size: 12px; }
+    .card-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; color: #e0e0e0; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .status-running { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    .status-stopped { background: #f44336; box-shadow: 0 0 6px #f44336; }
+    .status-unknown { background: #ff9800; box-shadow: 0 0 6px #ff9800; }
+    .binding-diagram { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; padding: 20px; }
+    .binding-node { background: #252545; border: 2px solid #3b3b6b; border-radius: 10px; padding: 12px 20px; text-align: center; min-width: 120px; }
+    .binding-node.agent { border-color: #4fc3f7; }
+    .binding-node.channel { border-color: #ab47bc; }
+    .binding-arrow { display: flex; align-items: center; color: #666; font-size: 24px; }
+    .editor-container { display: flex; gap: 0; height: 500px; border-radius: 8px; overflow: hidden; border: 1px solid #2a2a4a; }
+    .editor-pane { flex: 1; display: flex; flex-direction: column; }
+    .editor-pane textarea { flex: 1; background: #1a1a2e; color: #e0e0e0; border: none; padding: 16px; font-family: 'Fira Code', 'Consolas', monospace; font-size: 14px; resize: none; outline: none; }
+    .editor-pane .pane-header { background: #252545; padding: 8px 16px; color: #aaa; font-size: 13px; font-weight: 600; border-bottom: 1px solid #2a2a4a; }
+    .preview-pane { flex: 1; overflow-y: auto; background: #1a1a2e; padding: 16px; }
+    .preview-pane h1, .preview-pane h2, .preview-pane h3 { color: #e0e0e0; margin: 12px 0 8px; }
+    .preview-pane p { color: #bbb; line-height: 1.7; }
+    .preview-pane code { background: #252545; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .preview-pane pre { background: #252545; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+    .preview-pane pre code { background: none; padding: 0; }
+    .preview-pane ul, .preview-pane ol { color: #bbb; padding-left: 20px; }
+    .preview-pane blockquote { border-left: 3px solid #4fc3f7; padding-left: 12px; color: #999; margin: 8px 0; }
+    .login-container { display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a1a; }
+    .login-box { background: #1a1a2e; padding: 40px; border-radius: 16px; width: 400px; text-align: center; border: 1px solid #2a2a4a; }
+    .login-box h1 { font-size: 24px; margin-bottom: 8px; color: #e0e0e0; }
+    .login-box p { color: #888; margin-bottom: 24px; }
+    .login-box .logo-big { font-size: 48px; margin-bottom: 16px; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a4a; }
     .info-label { color: #888; }
-    .loading { text-align: center; padding: 40px; color: #666; }
+    .info-value { color: #e0e0e0; font-weight: 500; }
+    .tag-group { display: flex; gap: 4px; flex-wrap: wrap; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #666; }
+    .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; }
+    .empty-state p { font-size: 15px; margin-bottom: 8px; }
+    .empty-state .empty-hint { font-size: 13px; color: #555; }
+    .group-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 12px; }
+    .group-card h3 { color: #e0e0e0; margin-bottom: 8px; }
+    .group-card p { color: #888; margin-bottom: 12px; font-size: 14px; }
+    .account-card { background: #1d1d2e; border: 1px solid #2a2a4a; border-radius: 12px; overflow: hidden; margin-bottom: 16px; transition: border-color 0.2s; }
+    .account-card:hover { border-color: #5865F2; }
+    .account-card-header { background: linear-gradient(135deg, #5865F2 0%, #7289da 100%); padding: 14px 20px; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+    .account-card-header .acc-name { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .account-card-body { padding: 20px; }
+    .guild-block { background: #252545; border: 1px solid #3b3b6b; border-radius: 8px; padding: 16px; margin-top: 12px; }
+    .channel-block { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; padding: 12px; margin-top: 8px; }
+    .inline-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    .section-title { font-size: 15px; font-weight: 600; color: #4fc3f7; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; z-index: 100; height: 100vh; }
+      .sidebar.collapsed { width: 0; }
+      .editor-container { flex-direction: column; height: auto; }
+      .editor-pane { min-height: 250px; }
+    }
   </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="loading" class="loading-fallback">
+    <div>
+      <h2>⏳ 正在加载管理面板...</h2>
+      <p>如果长时间停留在此页面，请检查网络连接后刷新重试</p>
+    </div>
+  </div>
+<div id="app" v-cloak>
+  <!-- Login -->
+  <div v-if="!authenticated" class="login-container">
+    <div class="login-box">
+      <div class="logo-big">🦞</div>
+      <h1>OpenClaw 管理后台</h1>
+      <p>请输入管理密码登录</p>
+      <el-input v-model="loginToken" type="password" placeholder="管理密码" show-password size="large" @keyup.enter="login" style="margin-bottom:16px">
+        <template #prefix><i class="fas fa-key"></i></template>
+      </el-input>
+      <el-button type="primary" size="large" :loading="loginLoading" @click="login" style="width:100%">登录</el-button>
+      <div v-if="loginError" style="color:#f56c6c;margin-top:12px;font-size:14px">{{ loginError }}</div>
+    </div>
+  </div>
 
-<script src="https://cdn.jsdelivr.net/npm/vue@3.4.4/dist/vue.global.prod.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/element-plus@2.4.4/dist/index.full.min.js"></script>
+  <!-- Main Layout -->
+  <div v-else class="layout-container">
+    <!-- Sidebar -->
+    <div class="sidebar" :class="{ collapsed: sidebarCollapsed }">
+      <div class="sidebar-header">
+        <span class="logo">🦞</span>
+        <span class="title">OpenClaw</span>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item" :class="{ active: currentPage === 'dashboard' }" @click="currentPage='dashboard'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-tachometer-alt"></i><span>仪表盘</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'agents' }" @click="currentPage='agents'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-robot"></i><span>Agent 管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'editor' }" @click="currentPage='editor'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-file-alt"></i><span>文件编辑器</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'discord' }" @click="currentPage='discord'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fab fa-discord"></i><span>Discord 管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'bindings' }" @click="currentPage='bindings'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-link"></i><span>绑定管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'hooks' }" @click="currentPage='hooks'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-anchor"></i><span>Hooks 管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'skills' }" @click="currentPage='skills'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-puzzle-piece"></i><span>Skills 管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'gateway' }" @click="currentPage='gateway'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-server"></i><span>Gateway 管理</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentPage === 'settings' }" @click="currentPage='settings'; if(windowWidth<769) sidebarCollapsed=true">
+          <i class="fas fa-cog"></i><span>系统设置</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4caf50"></span>
+          <span style="color:#888">OpenClaw Admin</span>
+        </div>
+        <span>v1.1.0</span>
+      </div>
+    </div>
+    <div class="sidebar-overlay" :class="{ show: !sidebarCollapsed && windowWidth < 769 }" @click="sidebarCollapsed=true"></div>
+
+    <!-- Main -->
+    <div class="main-content">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="toggle-btn" @click="sidebarCollapsed=!sidebarCollapsed"><i class="fas fa-bars"></i></button>
+          <span style="color:#aaa;font-size:14px">{{ pageTitle }}</span>
+        </div>
+        <div class="topbar-right">
+          <el-button text style="color:#aaa" @click="logout"><i class="fas fa-sign-out-alt"></i> 退出</el-button>
+        </div>
+      </div>
+
+      <div class="content-area">
+
+        <!-- ==================== Dashboard ==================== -->
+        <div class="page-transition" v-if="currentPage==='dashboard'">
+          <h2 class="page-title">📊 仪表盘</h2>
+          <el-row :gutter="16">
+            <el-col :xs="12" :sm="6"><div class="stat-card agents">
+              <div class="stat-icon"><i class="fas fa-robot"></i></div>
+              <div class="stat-label">Agent</div>
+              <div class="stat-value">{{ agents.length }}</div>
+            </div></el-col>
+            <el-col :xs="12" :sm="6"><div class="stat-card gateway">
+              <div class="stat-icon"><i class="fas fa-server"></i></div>
+              <div class="stat-label">Gateway</div>
+              <div class="stat-value" style="display:flex;align-items:center;gap:8px;font-size:20px">
+                <span class="status-dot" :class="'status-'+gatewayStatus"></span>
+                {{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}
+              </div>
+            </div></el-col>
+            <el-col :xs="12" :sm="6"><div class="stat-card discord">
+              <div class="stat-icon"><i class="fab fa-discord"></i></div>
+              <div class="stat-label">Discord 账号</div>
+              <div class="stat-value">{{ discordAccountCount }}</div>
+            </div></el-col>
+            <el-col :xs="12" :sm="6"><div class="stat-card bindings">
+              <div class="stat-icon"><i class="fas fa-link"></i></div>
+              <div class="stat-label">绑定</div>
+              <div class="stat-value">{{ bindings.length }}</div>
+            </div></el-col>
+          </el-row>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-sliders-h"></i> 配置概览</div>
+            <el-row :gutter="12">
+              <el-col :xs="12" :sm="8" :md="6" v-for="item in configItems" :key="item.label">
+                <div style="background:#14142a;border-radius:8px;padding:14px;margin-bottom:10px;border:1px solid #222244">
+                  <div style="color:#666;font-size:12px;margin-bottom:6px"><i :class="item.icon" style="margin-right:4px"></i> {{ item.label }}</div>
+                  <div style="color:#e0e0e0;font-weight:600;font-size:14px">{{ item.value }}</div>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- System Status -->
+          <div class="card">
+            <div class="card-header" style="justify-content:space-between">
+              <span><i class="fas fa-heartbeat"></i> 系统状态</span>
+              <el-button size="small" @click="loadSystemStatus" :loading="systemStatusLoading"><i class="fas fa-sync"></i> 刷新</el-button>
+            </div>
+            <div v-if="systemStatusLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i><p style="margin-top:8px">加载中...</p></div>
+            <div v-else-if="systemStatus" style="font-family:'Fira Code',monospace;font-size:13px;background:#0a0a14;border-radius:8px;padding:16px;color:#aaa;white-space:pre-wrap;max-height:300px;overflow-y:auto;line-height:1.6">{{ formatSystemStatus(systemStatus) }}</div>
+            <div v-else style="text-align:center;padding:30px;color:#666"><i class="fas fa-plug" style="font-size:24px"></i><p style="margin-top:8px">暂无状态数据</p></div>
+          </div>
+        </div>
+
+        <!-- ==================== Agents ==================== -->
+        <div class="page-transition" v-if="currentPage==='agents'">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <h2 class="page-title" style="margin-bottom:0">🤖 Agent 管理</h2>
+            <el-button type="primary" @click="showCreateAgent"><i class="fas fa-plus"></i> 创建 Agent</el-button>
+          </div>
+          <el-table :data="agents" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+            <el-table-column prop="id" label="Agent ID" width="180"></el-table-column>
+            <el-table-column prop="workspace" label="工作空间"></el-table-column>
+            <el-table-column label="文件" width="300">
+              <template #default="{row}">
+                <div class="tag-group">
+                  <el-tag v-for="f in row.files" :key="f" size="small" type="info" style="margin:2px">{{ f }}</el-tag>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200">
+              <template #default="{row}">
+                <el-button text type="primary" size="small" @click="editAgent(row.id)"><i class="fas fa-edit"></i> 编辑</el-button>
+                <el-button v-if="row.id!=='main'" text type="danger" size="small" @click="deleteAgent(row.id)"><i class="fas fa-trash"></i> 删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-dialog v-model="createAgentDialog" title="创建新 Agent" width="400px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="Agent ID">
+                <el-input v-model="newAgentId" placeholder="例如: my-agent" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="createAgentDialog=false">取消</el-button>
+              <el-button type="primary" @click="createAgent">创建</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
+        <!-- ==================== File Editor ==================== -->
+        <div class="page-transition" v-if="currentPage==='editor'">
+          <h2 class="page-title">📝 文件编辑器</h2>
+          <div class="card">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+              <el-select v-model="editorAgent" placeholder="选择 Agent" style="width:200px">
+                <el-option v-for="a in agents" :key="a.id" :label="a.id" :value="a.id" />
+              </el-select>
+              <el-select v-model="editorFile" placeholder="选择文件" style="width:200px">
+                <el-option v-for="f in ['SOUL.md','AGENTS.md','MEMORY.md','USER.md','TOOLS.md','IDENTITY.md','HEARTBEAT.md']" :key="f" :label="f" :value="f" />
+              </el-select>
+              <el-button type="primary" @click="loadFile" :disabled="!editorAgent||!editorFile"><i class="fas fa-folder-open"></i> 加载</el-button>
+              <el-button type="success" @click="saveFile" :disabled="!editorAgent||!editorFile"><i class="fas fa-save"></i> 保存</el-button>
+            </div>
+            <div class="editor-container">
+              <div class="editor-pane">
+                <div class="pane-header"><i class="fas fa-code"></i> 编辑</div>
+                <textarea v-model="editorContent" placeholder="加载文件后在此编辑..." spellcheck="false"></textarea>
+              </div>
+              <div class="editor-pane">
+                <div class="pane-header"><i class="fas fa-eye"></i> 预览</div>
+                <div class="preview-pane" v-html="renderedMarkdown"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== Discord ==================== -->
+        <div class="page-transition" v-if="currentPage==='discord'">
+          <h2 class="page-title">💬 Discord Bot 管理</h2>
+
+          <!-- Global Settings -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-globe"></i> 全局设置</div>
+            <el-form label-position="left" label-width="140px" style="max-width:600px">
+              <el-form-item label="Discord 启用">
+                <el-switch :model-value="discordGlobal.enabled" @change="v => saveDiscordGlobal({enabled:v})" />
+              </el-form-item>
+              <el-form-item label="allowBots">
+                <el-switch :model-value="discordGlobal.allowBots" @change="v => saveDiscordGlobal({allowBots:v})" />
+                <span style="color:#888;font-size:12px;margin-left:8px">⚠️ Bot 之间互相 @ 必须开启</span>
+              </el-form-item>
+              <el-form-item label="groupPolicy">
+                <el-select :model-value="discordGlobal.groupPolicy" @change="v => saveDiscordGlobal({groupPolicy:v})" style="width:200px">
+                  <el-option label="开放 (open)" value="open" />
+                  <el-option label="提及 (mention)" value="mention" />
+                  <el-option label="白名单 (allowlist)" value="allowlist" />
+                  <el-option label="关闭 (closed)" value="closed" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Account List -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="section-title"><i class="fab fa-discord"></i> Bot 账号列表</div>
+            <el-button type="primary" size="small" @click="openAddAccount"><i class="fas fa-plus"></i> 添加账号</el-button>
+          </div>
+
+          <div v-if="discordAccountCount === 0" class="empty-state">
+            <i class="fab fa-discord"></i>
+            <p>暂无 Discord Bot 账号，点击上方添加</p>
+          </div>
+
+          <!-- Per Account -->
+          <div v-for="(acc, accName) in discordGlobal.accounts" :key="accName" class="account-card">
+            <div class="account-card-header">
+              <span class="acc-name"><i class="fab fa-discord"></i> {{ accName }}</span>
+              <el-button size="small" @click="deleteAccount(accName)" style="border:1px solid rgba(255,255,255,0.3);color:#fff;background:transparent"><i class="fas fa-trash"></i></el-button>
+            </div>
+            <div class="account-card-body">
+
+            <el-form label-position="left" label-width="120px" style="max-width:600px">
+              <el-form-item label="Token">
+                <div style="display:flex;gap:8px;flex:1">
+                  <el-input :model-value="maskToken(acc.token)" disabled style="flex:1" />
+                  <el-button size="small" @click="openEditToken(accName, acc.token)"><i class="fas fa-edit"></i></el-button>
+                </div>
+              </el-form-item>
+              <el-form-item label="绑定 Agent">
+                <div style="display:flex;gap:8px;align-items:center;flex:1">
+                  <el-select :model-value="getBindingAgent(accName)" @change="v => setBindingAgent(accName, v)" placeholder="选择要绑定的人格" style="flex:1" clearable>
+                    <el-option v-for="a in agents" :key="a.id" :label="a.id" :value="a.id">
+                      <span style="color:#4fc3f7"><i class="fas fa-robot"></i> {{ a.id }}</span>
+                    </el-option>
+                  </el-select>
+                  <el-tooltip content="绑定后，此 Bot 被触发时将使用所选 Agent 的人格(SOUL.md)回复" placement="top">
+                    <i class="fas fa-question-circle" style="color:#666;cursor:help"></i>
+                  </el-tooltip>
+                </div>
+              </el-form-item>
+              <el-form-item label="groupPolicy">
+                <el-select :model-value="acc.groupPolicy" @change="v => updateAccount(accName, {groupPolicy:v})" style="width:200px">
+                  <el-option label="开放 (open)" value="open" />
+                  <el-option label="提及 (mention)" value="mention" />
+                  <el-option label="白名单 (allowlist)" value="allowlist" />
+                  <el-option label="关闭 (closed)" value="closed" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+
+            <!-- Guilds -->
+            <div style="margin-top:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="section-title"><i class="fas fa-server"></i> 服务器 (Guilds)</div>
+                <el-button type="primary" size="small" @click="openAddGuild(accName)"><i class="fas fa-plus"></i> 添加服务器</el-button>
+              </div>
+
+              <div v-if="!acc.guilds || Object.keys(acc.guilds).length === 0" style="color:#666;font-size:14px;padding:12px 0">暂无服务器配置</div>
+
+              <div v-for="(guild, guildId) in (acc.guilds || {})" :key="guildId" class="guild-block">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-weight:600;color:#e0e0e0"><i class="fas fa-server"></i> {{ guildId }}</div>
+                  <el-button text type="danger" size="small" @click="deleteGuild(accName, guildId)"><i class="fas fa-times"></i></el-button>
+                </div>
+
+                <el-form label-position="left" label-width="140px" style="margin-top:8px">
+                  <el-form-item label="requireMention">
+                    <el-switch :model-value="guild.requireMention" @change="v => updateGuild(accName, guildId, {requireMention:v})" />
+                  </el-form-item>
+                </el-form>
+
+                <!-- Channels -->
+                <div style="margin-top:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="section-title" style="font-size:13px"><i class="fas fa-hashtag"></i> 频道</div>
+                    <el-button type="primary" size="small" @click="openAddChannel(accName, guildId)"><i class="fas fa-plus"></i></el-button>
+                  </div>
+                  <div v-if="!guild.channels || Object.keys(guild.channels).length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无频道</div>
+                  <div v-for="(ch, chId) in (guild.channels || {})" :key="chId" class="channel-block">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <span style="color:#bbb;font-size:13px"><i class="fas fa-hashtag"></i> {{ chId }}</span>
+                      <div style="display:flex;gap:4px;align-items:center">
+                        <el-tag v-if="ch.allow" size="small" type="success">允许</el-tag>
+                        <el-tag v-if="ch.requireMention" size="small" type="warning">需@</el-tag>
+                        <el-button text type="danger" size="small" @click="deleteChannel(accName, guildId, chId)"><i class="fas fa-times"></i></el-button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Users -->
+                <div style="margin-top:8px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div class="section-title" style="font-size:13px"><i class="fas fa-user"></i> 用户白名单</div>
+                    <el-button type="primary" size="small" @click="openAddUser(accName, guildId)"><i class="fas fa-plus"></i></el-button>
+                  </div>
+                  <div v-if="!guild.users || guild.users.length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无白名单</div>
+                  <div v-for="uid in (guild.users || [])" :key="uid" class="channel-block" style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="color:#bbb;font-size:13px"><i class="fas fa-user"></i> {{ uid }}</span>
+                    <el-button text type="danger" size="small" @click="deleteUser(accName, guildId, uid)"><i class="fas fa-times"></i></el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <!-- Dialogs -->
+          <el-dialog v-model="addAccountDialog" title="添加 Discord Bot 账号" width="500px" :close-on-click-modal="false">
+            <p style="color:#888;font-size:14px;margin-bottom:16px">在 <a href="https://discord.com/developers/applications" target="_blank" style="color:#5865F2">Discord Developer Portal</a> 获取 Bot Token</p>
+            <el-form label-position="top">
+              <el-form-item label="账号名称（用作 accountId）">
+                <el-input v-model="newAccountName" placeholder="例如: thinker, doer" />
+              </el-form-item>
+              <el-form-item label="Bot Token">
+                <el-input v-model="newAccountToken" type="password" show-password placeholder="粘贴 Bot Token" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="addAccountDialog=false">取消</el-button>
+              <el-button type="primary" @click="createAccount" :loading="accountLoading">添加</el-button>
+            </template>
+          </el-dialog>
+
+          <el-dialog v-model="editTokenDialog" title="编辑 Bot Token" width="450px" :close-on-click-modal="false">
+            <el-input v-model="editingToken" type="password" show-password placeholder="输入新的 Bot Token" />
+            <template #footer>
+              <el-button @click="editTokenDialog=false">取消</el-button>
+              <el-button type="primary" @click="saveEditToken">保存</el-button>
+            </template>
+          </el-dialog>
+
+          <el-dialog v-model="addGuildDialog" title="添加服务器" width="450px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="服务器 ID (Guild ID)">
+                <el-input v-model="newGuildId" placeholder="右键服务器图标 → 复制服务器 ID" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="addGuildDialog=false">取消</el-button>
+              <el-button type="primary" @click="createGuild">添加</el-button>
+            </template>
+          </el-dialog>
+
+          <el-dialog v-model="addChannelDialog" title="添加频道" width="450px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="频道 ID">
+                <el-input v-model="newChannelId" placeholder="右键频道 → 复制频道 ID" />
+              </el-form-item>
+              <el-form-item label="设置">
+                <div style="display:flex;gap:16px">
+                  <el-checkbox v-model="newChannelAllow">allow (允许)</el-checkbox>
+                  <el-checkbox v-model="newChannelRequireMention">requireMention (需要@)</el-checkbox>
+                </div>
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="addChannelDialog=false">取消</el-button>
+              <el-button type="primary" @click="createChannel">添加</el-button>
+            </template>
+          </el-dialog>
+
+          <el-dialog v-model="addUserDialog" title="添加用户白名单" width="450px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="用户 ID">
+                <el-input v-model="newUserId" placeholder="右键用户头像 → 复制用户 ID" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="addUserDialog=false">取消</el-button>
+              <el-button type="primary" @click="createUser">添加</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
+        <!-- ==================== Bindings ==================== -->
+        <div class="page-transition" v-if="currentPage==='bindings'">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <h2 class="page-title" style="margin-bottom:0">🔗 绑定关系管理</h2>
+            <el-button type="primary" @click="showAddBinding"><i class="fas fa-plus"></i> 添加绑定</el-button>
+          </div>
+          <div v-if="bindings.length === 0" class="empty-state">
+            <i class="fas fa-link"></i>
+            <p>暂无绑定关系。绑定决定 Agent 使用哪个 Discord Bot 账号。</p>
+          </div>
+          <div v-else>
+            <!-- Grouped view: guild → channel → bot+agent -->
+            <div v-for="(guildChannels, guildId) in bindingByGuild" :key="guildId" class="card">
+              <div class="card-header" style="cursor:default">
+                <i class="fas fa-server"></i>
+                <el-input v-model="guildLabels[guildId]" size="small" @blur="saveGuildLabel(guildId, guildLabels[guildId])" @keyup.enter="saveGuildLabel(guildId, guildLabels[guildId])"
+                  style="width:280px;--el-input-bg-color:#252545" placeholder="服务器备注名">
+                  <template #prepend>🏢</template>
+                </el-input>
+                <span style="color:#555;font-size:12px;margin-left:8px">{{ guildId }}</span>
+              </div>
+              <div v-for="(channelEntries, channelId) in guildChannels" :key="channelId" class="guild-block">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                  <i class="fas fa-hashtag" style="color:#666"></i>
+                  <el-input v-model="channelLabels[channelId]" size="small" @blur="saveChannelLabel(channelId, channelLabels[channelId])" @keyup.enter="saveChannelLabel(channelId, channelLabels[channelId])"
+                    style="width:220px;--el-input-bg-color:#1a1a2e" placeholder="频道备注名" />
+                  <span style="color:#555;font-size:12px">{{ channelId }}</span>
+                </div>
+                <el-table :data="channelEntries" style="width:100%" :header-cell-style="{background:'#1a1a2e',color:'#888'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+                  <el-table-column label="Bot 账号" width="180">
+                    <template #default="{row}"><span style="color:#ab47bc;font-weight:600"><i class="fab fa-discord"></i> {{ row.accountId }}</span></template>
+                  </el-table-column>
+                  <el-table-column label="绑定 Agent" width="180">
+                    <template #default="{row}">
+                      <span v-if="row.agentId" style="color:#4fc3f7;font-weight:600"><i class="fas fa-robot"></i> {{ row.agentId }}</span>
+                      <span v-else style="color:#f56c6c"><i class="fas fa-exclamation-triangle"></i> 未绑定 Agent</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="requireMention" width="130">
+                    <template #default="{row}">
+                      <el-tag v-if="row.requireMention" size="small" type="warning">需要 @</el-tag>
+                      <el-tag v-else size="small" type="info">自由回复</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="allow" width="80">
+                    <template #default="{row}">
+                      <el-tag v-if="row.allow" size="small" type="success">允许</el-tag>
+                      <el-tag v-else size="small" type="danger">禁止</el-tag>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </div>
+
+            <!-- Accounts with no guild/channel configured -->
+            <div v-if="unboundAccounts.length > 0" class="card">
+              <div class="card-header"><i class="fas fa-exclamation-circle" style="color:#ff9800"></i> 未配置频道的账号</div>
+              <div v-for="entry in unboundAccounts" :key="entry.accountId" style="padding:8px 0;color:#bbb">
+                <i class="fab fa-discord" style="color:#ab47bc"></i> <strong>{{ entry.accountId }}</strong>
+                <span v-if="entry.agentId" style="margin-left:12px"><i class="fas fa-robot" style="color:#4fc3f7"></i> → {{ entry.agentId }}</span>
+                <span v-else style="margin-left:12px;color:#f56c6c">未绑定 Agent</span>
+                <span style="color:#888;margin-left:12px;font-size:13px">（没有配置任何服务器或频道）</span>
+              </div>
+            </div>
+          </div>
+
+          <el-dialog v-model="addBindingDialog" title="添加绑定" width="450px" :close-on-click-modal="false">
+            <p style="color:#888;font-size:14px;margin-bottom:16px">绑定决定了当某个 Discord Bot 被触发时，使用哪个人格回复。</p>
+            <el-form label-position="top">
+              <el-form-item label="Agent">
+                <el-select v-model="newBinding.agentId" style="width:100%">
+                  <el-option v-for="a in agents" :key="a.id" :label="a.id" :value="a.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="Discord 账号 (accountId)">
+                <el-select v-model="newBinding.accountId" style="width:100%">
+                  <el-option v-for="name in discordAccountNames" :key="name" :label="name" :value="name" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="addBindingDialog=false">取消</el-button>
+              <el-button type="primary" @click="addBinding">添加</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
+        <!-- ==================== Hooks ==================== -->
+        <div class="page-transition" v-if="currentPage==='hooks'">
+          <h2 class="page-title">🪝 Hooks 管理</h2>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-cog"></i> Hooks 全局开关</div>
+            <el-form label-position="left" label-width="180px" style="max-width:500px">
+              <el-form-item label="Internal Hooks 启用">
+                <el-switch :model-value="hooksData.enabled" @change="v => saveHooks({enabled:v})" />
+              </el-form-item>
+            </el-form>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-list"></i> Hook 列表</div>
+            <el-table :data="hooksList" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0'}">
+              <el-table-column prop="name" label="Hook 名称" width="250">
+                <template #default="{row}"><span style="font-weight:600;color:#4fc3f7">{{ row.name }}</span></template>
+              </el-table-column>
+              <el-table-column label="说明">
+                <template #default="{row}">{{ row.desc }}</template>
+              </el-table-column>
+              <el-table-column label="启用" width="100">
+                <template #default="{row}">
+                  <el-switch :model-value="row.enabled" @change="v => toggleHook(row.name, v)" />
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-info-circle"></i> 说明</div>
+            <div style="color:#bbb;font-size:14px;line-height:1.8">
+              <p><strong>session-memory</strong>：会话重置前自动保存对话记忆到 MEMORY.md</p>
+              <p><strong>command-logger</strong>：记录命令调用日志（调试用）</p>
+              <p style="color:#888;margin-top:8px">修改 openclaw.json 后需要重启 Gateway 才能生效。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== Skills ==================== -->
+        <div class="page-transition" v-if="currentPage==='skills'">
+          <h2 class="page-title">🧩 Skills 管理</h2>
+
+          <!-- Actions -->
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+            <el-button type="primary" @click="loadSkills" :loading="skillsLoading"><i class="fas fa-sync"></i> 刷新列表</el-button>
+            <el-button type="success" @click="showInstallDialog"><i class="fas fa-download"></i> 安装 Skill</el-button>
+            <el-button type="warning" @click="updateAllSkills" :loading="skillsUpdating"><i class="fas fa-arrow-up"></i> 全部更新</el-button>
+          </div>
+
+          <!-- Search -->
+          <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;gap:12px;align-items:center">
+              <el-input v-model="skillSearchQuery" placeholder="搜索 ClawHub skills..." clearable style="flex:1" @keyup.enter="searchSkills">
+                <template #prefix><i class="fas fa-search"></i></template>
+              </el-input>
+              <el-button type="primary" @click="searchSkills" :loading="skillSearchLoading"><i class="fas fa-search"></i> 搜索</el-button>
+            </div>
+          </div>
+
+          <!-- Installed Skills -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-list"></i> 已安装 Skills <el-tag size="small" type="info" style="margin-left:8px">{{ installedSkills.length }}</el-tag></div>
+            <div v-if="skillsLoading" style="text-align:center;padding:30px;color:#666"><i class="fas fa-spinner fa-spin" style="font-size:24px"></i></div>
+            <div v-else-if="installedSkills.length === 0" class="empty-state">
+              <i class="fas fa-puzzle-piece"></i>
+              <p>暂无已安装的 Skill</p>
+            </div>
+            <div v-else style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+              <div v-for="sk in installedSkills" :key="sk.name || sk.slug" style="background:#14142a;border-radius:10px;padding:16px;border:1px solid #222244;transition:border-color 0.2s" @mouseenter="$event.target.style.borderColor='#4fc3f7'" @mouseleave="$event.target.style.borderColor='#222244'">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-weight:600;color:#4fc3f7;font-size:15px"><i class="fas fa-puzzle-piece" style="margin-right:6px"></i>{{ sk.name || sk.slug }}</span>
+                  <el-button size="small" type="primary" text @click="updateSingleSkill(sk.slug)" :loading="skillUpdatingId===sk.slug"><i class="fas fa-arrow-up"></i></el-button>
+                </div>
+                <div style="color:#888;font-size:12px;line-height:1.6">
+                  <div v-if="sk.version"><i class="fas fa-tag" style="width:14px"></i> 版本: {{ sk.version }}</div>
+                  <div v-if="sk.location"><i class="fas fa-folder" style="width:14px"></i> {{ sk.location }}</div>
+                  <div v-if="sk.description" style="margin-top:4px;color:#666">{{ sk.description }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div v-if="skillSearchResults.length > 0" class="card">
+            <div class="card-header"><i class="fas fa-globe"></i> 搜索结果 <el-tag size="small" type="info" style="margin-left:8px">{{ skillSearchResults.length }}</el-tag></div>
+            <el-table :data="skillSearchResults" style="width:100%" :header-cell-style="{background:'#252545',color:'#aaa'}" :row-style="{background:'#1d1d2e',color:'#e0e0e0}">
+              <el-table-column prop="name" label="名称" width="200">
+                <template #default="{row}"><span style="color:#4fc3f7;font-weight:600">{{ row.name || row.slug }}</span></template>
+              </el-table-column>
+              <el-table-column prop="description" label="描述" />
+              <el-table-column prop="version" label="版本" width="100" />
+              <el-table-column label="操作" width="140">
+                <template #default="{row}">
+                  <el-button type="primary" size="small" @click="installSkill(row.slug)" :loading="skillInstallingId===row.slug"><i class="fas fa-download"></i> 安装</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- Install Dialog -->
+          <el-dialog v-model="installDialogVisible" title="安装 Skill" width="450px" :close-on-click-modal="false">
+            <el-form label-position="top">
+              <el-form-item label="Skill Slug">
+                <el-input v-model="installSlug" placeholder="例如: healthcheck" />
+              </el-form-item>
+              <el-form-item label="版本 (可选)">
+                <el-input v-model="installVersion" placeholder="留空安装最新版" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="installDialogVisible=false">取消</el-button>
+              <el-button type="primary" @click="installSkill(installSlug)" :loading="skillInstallingId===installSlug">安装</el-button>
+            </template>
+          </el-dialog>
+        </div>
+
+        <!-- ==================== Gateway ==================== -->
+        <div class="page-transition" v-if="currentPage==='gateway'">
+          <h2 class="page-title">🖥️ Gateway 管理</h2>
+          <div class="gateway-banner" :class="'gw-'+gatewayStatus" style="border-radius:12px;padding:24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+            <div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+                <span class="status-dot" :class="'status-'+gatewayStatus" style="width:14px;height:14px"></span>
+                <span style="font-size:24px;font-weight:700">{{ gatewayStatus==='running'?'Gateway 运行中':gatewayStatus==='stopped'?'Gateway 已停止':'Gateway 状态未知' }}</span>
+              </div>
+              <div style="color:rgba(255,255,255,0.6);font-size:13px">PID: {{ gatewayInfo.pid || '—' }} · 端口: {{ gatewayInfo.port || '—' }} · 运行时间: {{ gatewayInfo.uptime || '—' }}</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <el-button type="success" @click="gatewayAction('start')" style="border:none"><i class="fas fa-play"></i> 启动</el-button>
+              <el-button type="danger" @click="gatewayAction('stop')" style="border:none"><i class="fas fa-stop"></i> 停止</el-button>
+              <el-button type="warning" @click="gatewayAction('restart')" style="border:none"><i class="fas fa-redo"></i> 重启</el-button>
+              <el-button @click="refreshGateway" style="border:1px solid rgba(255,255,255,0.3);color:#fff;background:transparent"><i class="fas fa-sync"></i> 刷新</el-button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><i class="fas fa-info-circle"></i> 详细信息</div>
+            <div class="info-row"><span class="info-label">模式</span><span class="info-value">{{ gatewayInfo.mode || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">绑定</span><span class="info-value">{{ gatewayInfo.bind || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">内存使用</span><span class="info-value">{{ gatewayInfo.memory ? gatewayInfo.memory + '%' : '—' }}</span></div>
+          </div>
+          <div v-if="gatewayInfo.info" class="card">
+            <div class="card-header"><i class="fas fa-terminal"></i> 详细信息</div>
+            <pre style="color:#aaa;font-size:13px;white-space:pre-wrap;background:#141414;padding:12px;border-radius:6px">{{ gatewayInfo.info }}</pre>
+          </div>
+        </div>
+
+        <!-- ==================== Settings ==================== -->
+        <div class="page-transition" v-if="currentPage==='settings'">
+          <h2 class="page-title">⚙️ 系统设置</h2>
+
+          <!-- Session -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-clock"></i> 会话设置</div>
+            <el-form label-position="left" label-width="160px" style="max-width:600px">
+              <el-form-item label="空闲超时 (分钟)">
+                <el-input-number v-model="settings.idleMinutes" :min="0" :max="1440" :step="5" />
+                <span style="color:#888;margin-left:8px;font-size:13px">0 表示不超时</span>
+              </el-form-item>
+              <el-form-item label="DM 范围 (dmScope)">
+                <el-select v-model="settings.dmScope" style="width:220px">
+                  <el-option label="per-channel-peer" value="per-channel-peer" />
+                  <el-option label="per-peer" value="per-peer" />
+                  <el-option label="all" value="all" />
+                  <el-option label="owner" value="owner" />
+                  <el-option label="whitelist" value="whitelist" />
+                  <el-option label="none" value="none" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Model -->
+          <div class="card">
+            <div class="card-header"><i class="fas fa-brain"></i> 模型设置</div>
+            <el-form label-position="left" label-width="160px" style="max-width:600px">
+              <el-form-item label="主模型 (primary)">
+                <el-input v-model="settings.primaryModel" placeholder="例如: zai/glm-5-turbo" style="width:300px" />
+              </el-form-item>
+              <el-form-item label="最大并发">
+                <el-input-number v-model="settings.maxConcurrent" :min="1" :max="20" :step="1" />
+              </el-form-item>
+              <el-form-item label="工具权限 (profile)">
+                <el-select v-model="settings.toolProfile" style="width:220px">
+                  <el-option label="full" value="full" />
+                  <el-option label="restricted" value="restricted" />
+                  <el-option label="minimal" value="minimal" />
+                </el-select>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <el-button type="primary" @click="saveSettings" style="margin-top:8px"><i class="fas fa-save"></i> 保存所有设置</el-button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.15/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/element-plus@2.6.0/dist/index.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script>
-if (!window.Vue) {
-  document.getElementById('app').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#f56c6c"><div style="text-align:center"><h2>Vue 加载失败</h2><p>请检查网络连接，或尝试刷新页面</p></div></div>';
-} else if (!window.ElementPlus) {
-  document.getElementById('app').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#f56c6c"><div style="text-align:center"><h2>ElementPlus 加载失败</h2><p>请检查网络连接，或尝试刷新页面</p></div></div>';
-} else {
-const { createApp, ref, reactive, computed, onMounted } = Vue;
+// 全局错误捕获
+window.onerror = function(msg, url, line, col, error) {
+  alert('JS错误: ' + msg + ' @ ' + line + ':' + col);
+  console.error(error);
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  alert('Promise错误: ' + (e.reason?.message || e.reason));
+});
+if (!window.Vue) { alert('Vue加载失败！请检查网络'); }
+if (!window.ElementPlus) { alert('ElementPlus加载失败！请检查网络'); }
+const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+const { ElMessage, ElMessageBox } = ElementPlus;
 
 const app = createApp({
   setup() {
     const authenticated = ref(false);
-    const password = ref('');
+    const loginToken = ref('');
     const loginLoading = ref(false);
     const loginError = ref('');
     const currentPage = ref('dashboard');
+    const sidebarCollapsed = ref(false);
+    const windowWidth = ref(window.innerWidth);
+    window.addEventListener('resize', () => { windowWidth.value = window.innerWidth; if (window.innerWidth >= 769) sidebarCollapsed.value = false; });
+
+    // Data
+    const agents = ref([]);
+    const agentStatus = ref([]);
+    const systemStatus = ref(null);
+    const systemStatusLoading = ref(false);
+    const installedSkills = ref([]);
+    const skillsLoading = ref(false);
+    const skillsUpdating = ref(false);
+    const skillUpdatingId = ref('');
+    const skillSearchQuery = ref('');
+    const skillSearchResults = ref([]);
+    const skillSearchLoading = ref(false);
+    const skillInstallingId = ref('');
+    const installDialogVisible = ref(false);
+    const installSlug = ref('');
+    const installVersion = ref('');
+    const bindings = ref([]);
     const config = ref({});
     const gatewayStatus = ref('unknown');
     const gatewayInfo = ref({});
-    const agents = ref([]);
-    const bindings = ref([]);
-    const discord = reactive({ enabled: false, allowBots: false, accounts: {} });
+    const hooksData = reactive({ enabled: true, entries: {} });
+    const labels = reactive({ guilds: {}, channels: {} });
+    const guildLabels = reactive({});
+    const channelLabels = reactive({});
 
+    // Watch labels to keep local edit dicts in sync
+    watch(labels, (v) => {
+      Object.keys(v.guilds || {}).forEach(k => { if (!(k in guildLabels)) guildLabels[k] = v.guilds[k]; });
+      Object.keys(v.channels || {}).forEach(k => { if (!(k in channelLabels)) channelLabels[k] = v.channels[k]; });
+    }, { immediate: true });
+    const settings = reactive({ idleMinutes: 0, dmScope: 'per-channel-peer', primaryModel: '', maxConcurrent: 4, toolProfile: 'full' });
+
+    // Editor
+    const editorAgent = ref('');
+    const editorFile = ref('');
+    const editorContent = ref('');
+
+    // Agent dialog
+    const createAgentDialog = ref(false);
+    const newAgentId = ref('');
+
+    // Discord dialogs
+    const discordGlobal = reactive({ enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
+    const addAccountDialog = ref(false);
+    const newAccountName = ref('');
+    const newAccountToken = ref('');
+    const accountLoading = ref(false);
+    const editTokenDialog = ref(false);
+    const editingTokenName = ref('');
+    const editingToken = ref('');
+    const addGuildDialog = ref(false);
+    const addGuildAccountName = ref('');
+    const newGuildId = ref('');
+    const addChannelDialog = ref(false);
+    const addChannelAccountName = ref('');
+    const addChannelGuildId = ref('');
+    const newChannelId = ref('');
+    const newChannelAllow = ref(true);
+    const newChannelRequireMention = ref(true);
+    const addUserDialog = ref(false);
+    const addUserAccountName = ref('');
+    const addUserGuildId = ref('');
+    const newUserId = ref('');
+
+    // Binding dialog
+    const addBindingDialog = ref(false);
+    const newBinding = reactive({ agentId: '', accountId: '' });
+
+    // Computed
+    const discordAccountCount = computed(() => Object.keys(discordGlobal.accounts || {}).length);
+    const discordAccountNames = computed(() => Object.keys(discordGlobal.accounts || {}));
+
+    const bindingByGuild = computed(() => {
+      const result = {};
+      const accounts = discordGlobal.accounts || {};
+      const bindingMap = {};
+      for (const b of bindings.value) {
+        bindingMap[b.match?.accountId || ''] = b.agentId;
+      }
+      for (const [accName, acc] of Object.entries(accounts)) {
+        const guilds = acc.guilds || {};
+        for (const [guildId, guild] of Object.entries(guilds)) {
+          if (!result[guildId]) result[guildId] = {};
+          const channels = guild.channels || {};
+          // If account has channels configured, only list those
+          const channelIds = Object.keys(channels);
+          if (channelIds.length > 0) {
+            for (const chId of channelIds) {
+              if (!result[guildId][chId]) result[guildId][chId] = [];
+              result[guildId][chId].push({
+                accountId: accName,
+                agentId: bindingMap[accName] || '',
+                requireMention: channels[chId]?.requireMention ?? guild.requireMention,
+                allow: channels[chId]?.allow ?? true
+              });
+            }
+          } else {
+            // Account has guild but no specific channels
+            if (!result[guildId]['__all__']) result[guildId]['__all__'] = [];
+            result[guildId]['__all__'].push({
+              accountId: accName,
+              agentId: bindingMap[accName] || '',
+              requireMention: guild.requireMention,
+              allow: true
+            });
+          }
+        }
+      }
+      // Clean up __all__ keys - rename to "(所有频道)"
+      for (const guildId of Object.keys(result)) {
+        if (result[guildId]['__all__']) {
+          result[guildId]['(所有频道)'] = result[guildId]['__all__'];
+          delete result[guildId]['__all__'];
+        }
+      }
+      return result;
+    });
+
+    const unboundAccounts = computed(() => {
+      const result = [];
+      const accounts = discordGlobal.accounts || {};
+      const bindingMap = {};
+      for (const b of bindings.value) {
+        bindingMap[b.match?.accountId || ''] = b.agentId;
+      }
+      for (const [accName, acc] of Object.entries(accounts)) {
+        const guilds = acc.guilds || {};
+        const hasGuilds = Object.keys(guilds).length > 0;
+        const hasChannels = Object.values(guilds).some(g => Object.keys(g.channels || {}).length > 0);
+        if (!hasGuilds || !hasChannels) {
+          result.push({ accountId: accName, agentId: bindingMap[accName] || '' });
+        }
+      }
+      return result;
+    });
+
+    const hooksList = computed(() => {
+      const descs = { 'session-memory': '会话重置前自动保存对话记忆', 'command-logger': '记录命令调用日志' };
+      return Object.entries(hooksData.entries || {}).map(([name, obj]) => ({
+        name, enabled: !!obj.enabled, desc: descs[name] || name
+      }));
+    });
+
+    const pageTitle = computed(() => {
+      const map = { dashboard:'仪表盘', agents:'Agent 管理', editor:'文件编辑器', discord:'Discord 管理', bindings:'绑定管理', hooks:'Hooks 管理', skills:'Skills 管理', gateway:'Gateway 管理', settings:'系统设置' };
+      return map[currentPage.value] || '';
+    });
+
+    const configItems = computed(() => [
+      { label: 'Gateway 端口', value: config.value.gateway?.port || '—', icon: 'fas fa-plug' },
+      { label: 'Gateway 模式', value: config.value.gateway?.mode || '—', icon: 'fas fa-network-wired' },
+      { label: '默认模型', value: config.value.agents?.defaults?.model?.primary || '—', icon: 'fas fa-brain' },
+      { label: '最大并发', value: config.value.agents?.defaults?.maxConcurrent || '—', icon: 'fas fa-layer-group' },
+      { label: '工具权限', value: config.value.tools?.profile || '—', icon: 'fas fa-shield-alt' },
+      { label: '空闲超时', value: (config.value.session?.idleMinutes || 0) + ' 分钟', icon: 'fas fa-clock' },
+      { label: 'DM 范围', value: config.value.session?.dmScope || '—', icon: 'fas fa-envelope' },
+      { label: 'Discord 启用', value: config.value.channels?.discord?.enabled ? '✅ 是' : '❌ 否', icon: 'fab fa-discord' },
+      { label: 'allowBots', value: config.value.channels?.discord?.allowBots ? '✅ 是' : '❌ 否', icon: 'fas fa-robot' },
+    ]);
+
+    const renderedMarkdown = computed(() => {
+      try { return marked.parse(editorContent.value || ''); } catch { return ''; }
+    });
+
+    // API helper
     async function api(path, opts = {}) {
-      const res = await fetch('/api' + path, { 
-        headers: { 'Content-Type': 'application/json' },
-        ...opts 
-      });
+      const headers = { 'Content-Type': 'application/json', ...opts.headers };
+      if (opts.body && typeof opts.body !== 'string') opts.body = JSON.stringify(opts.body);
+      const res = await fetch('/api' + path, { headers, ...opts });
       if (res.status === 401) { authenticated.value = false; throw new Error('未授权'); }
       const text = await res.text();
-      try { return JSON.parse(text); } catch { throw new Error('服务器错误'); }
+      let data;
+      try { data = JSON.parse(text); } catch { throw new Error('服务器返回了非 JSON 响应 (' + res.status + ')'); }
+      if (!res.ok) throw new Error(data.error || '请求失败');
+      return data;
     }
 
+    function maskToken(t) {
+      if (!t || t.length < 8) return '••••••••';
+      return t.slice(0, 4) + '••••••••' + t.slice(-4);
+    }
+
+    function displayName(type, id) {
+      const name = labels[type]?.[id];
+      return name ? `${name} (${id})` : id;
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '未知';
+      const diff = Date.now() - new Date(iso).getTime();
+      const m = Math.floor(diff / 60000);
+      if (m < 1) return '刚刚';
+      if (m < 60) return m + ' 分钟前';
+      const h = Math.floor(m / 60);
+      if (h < 24) return h + ' 小时前';
+      return Math.floor(h / 24) + ' 天前';
+    }
+
+    function saveGuildLabel(guildId, name) {
+      if (!labels.guilds) labels.guilds = {};
+      if (name && name.trim()) labels.guilds[guildId] = name.trim();
+      else delete labels.guilds[guildId];
+      api('/labels', { method: 'PUT', body: labels }).catch(() => {});
+    }
+
+    function saveChannelLabel(channelId, name) {
+      if (!labels.channels) labels.channels = {};
+      if (name && name.trim()) labels.channels[channelId] = name.trim();
+      else delete labels.channels[channelId];
+      api('/labels', { method: 'PUT', body: labels }).catch(() => {});
+    }
+
+    // Auth
     async function login() {
       loginLoading.value = true;
       loginError.value = '';
       try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: password.value })
-        });
-        const data = await res.json();
-        if (data.success) {
-          authenticated.value = true;
-          loadData();
-        } else {
-          loginError.value = data.error || '登录失败';
-        }
-      } catch (e) { loginError.value = '网络错误'; }
-      loginLoading.value = false;
+        await api('/auth/login', { method: 'POST', body: JSON.stringify({ token: loginToken.value }) });
+        authenticated.value = true;
+        loadAll();
+      } catch (e) { loginError.value = e.message || '登录失败'; } finally { loginLoading.value = false; }
     }
+    function logout() { fetch('/api/auth/logout', { method: 'POST' }); authenticated.value = false; loginToken.value = ''; }
 
-    function logout() {
-      fetch('/api/auth/logout', { method: 'POST' });
-      authenticated.value = false;
-      password.value = '';
-    }
-
-    async function loadData() {
+    // Load all
+    async function loadAll() {
       try {
-        const [c, gw, a, b, d] = await Promise.all([
+        const [a, disc, b, h, c, gw, s, l, st, sys, sk] = await Promise.all([
+          api('/agents').catch(() => []),
+          api('/discord').catch(() => ({})),
+          api('/bindings').catch(() => []),
+          api('/hooks').catch(() => ({enabled:true,entries:{}})),
           api('/config').catch(() => ({})),
           api('/gateway/status').catch(() => ({})),
-          api('/agents').catch(() => []),
-          api('/bindings').catch(() => []),
-          api('/discord').catch(() => ({ enabled: false, accounts: {} }))
+          api('/settings').catch(() => ({})),
+          api('/labels').catch(() => ({guilds:{},channels:{}})),
+          api('/agents/status').catch(() => []),
+          api('/system/status').catch(() => null),
+          api('/skills').catch(() => [])
         ]);
-        config.value = c;
-        gatewayInfo.value = gw;
-        gatewayStatus.value = gw.status || 'unknown';
         agents.value = a || [];
+        agentStatus.value = st || [];
+        systemStatus.value = sys;
+        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
+        Object.assign(discordGlobal, disc.enabled !== undefined ? disc : { enabled: false, allowBots: false, groupPolicy: 'open', accounts: {} });
         bindings.value = b || [];
-        Object.assign(discord, d);
+        hooksData.enabled = h.enabled ?? true;
+        hooksData.entries = h.entries || {};
+        config.value = c || {};
+        gatewayInfo.value = gw || {};
+        gatewayStatus.value = gw.status || 'unknown';
+        Object.assign(settings, {
+          idleMinutes: s.idleMinutes ?? 0,
+          dmScope: s.dmScope || 'per-channel-peer',
+          primaryModel: s.primaryModel || '',
+          maxConcurrent: s.maxConcurrent || 4,
+          toolProfile: s.toolProfile || 'full'
+        });
+        labels.guilds = l.guilds || {};
+        labels.channels = l.channels || {};
       } catch (e) { console.error(e); }
     }
 
-    async function gatewayAction(action) {
+    // === Agent CRUD ===
+    function showCreateAgent() { newAgentId.value = ''; createAgentDialog.value = true; }
+    async function createAgent() {
       try {
-        await api('/gateway/' + action, { method: 'POST' });
-        setTimeout(loadData, 2000);
-      } catch (e) { ElementPlus.ElMessage.error(e.message); }
+        await api('/agents', { method: 'POST', body: JSON.stringify({ id: newAgentId.value }) });
+        createAgentDialog.value = false; ElMessage.success('Agent 创建成功'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+    async function deleteAgent(id) {
+      try {
+        await ElMessageBox.confirm(`确定删除 Agent "${id}"？`, '确认', { type: 'warning' });
+        await api('/agents/' + id, { method: 'DELETE' }); ElMessage.success('已删除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+    function editAgent(id) { editorAgent.value = id; editorFile.value = 'SOUL.md'; currentPage.value = 'editor'; loadFile(); }
+
+    // === File Editor ===
+    async function loadFile() {
+      try { const d = await api(`/agents/${editorAgent.value}/files/${editorFile.value}`); editorContent.value = d.content; }
+      catch (e) { ElMessage.error(e.message); }
+    }
+    async function saveFile() {
+      try { await api(`/agents/${editorAgent.value}/files/${editorFile.value}`, { method: 'PUT', body: JSON.stringify({ content: editorContent.value }) }); ElMessage.success('保存成功'); }
+      catch (e) { ElMessage.error(e.message); }
     }
 
+    // === Discord ===
+    async function saveDiscordGlobal(updates) {
+      try { await api('/discord', { method: 'PUT', body: updates }); ElMessage.success('已更新'); loadAll(); }
+      catch (e) { ElMessage.error(e.message); }
+    }
+
+    function openAddAccount() { newAccountName.value = ''; newAccountToken.value = ''; addAccountDialog.value = true; }
+    async function createAccount() {
+      if (!newAccountName.value.trim()) return ElMessage.warning('请输入账号名称');
+      if (!newAccountToken.value.trim()) return ElMessage.warning('请输入 Token');
+      accountLoading.value = true;
+      try {
+        await api('/discord/accounts', { method: 'POST', body: JSON.stringify({ name: newAccountName.value.trim(), token: newAccountToken.value.trim() }) });
+        addAccountDialog.value = false; ElMessage.success('账号添加成功'); loadAll();
+      } catch (e) { ElMessage.error(e.message); } finally { accountLoading.value = false; }
+    }
+    async function deleteAccount(name) {
+      try {
+        await ElMessageBox.confirm(`确定删除账号 "${name}"？`, '确认', { type: 'warning' });
+        await api(`/discord/accounts/${name}`, { method: 'DELETE' }); ElMessage.success('已删除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+    async function updateAccount(name, updates) {
+      try { await api(`/discord/accounts/${name}`, { method: 'PUT', body: updates }); ElMessage.success('已更新'); loadAll(); }
+      catch (e) { ElMessage.error(e.message); }
+    }
+
+    function openEditToken(name, token) { editingTokenName.value = name; editingToken.value = ''; editTokenDialog.value = true; }
+    async function saveEditToken() {
+      try {
+        await api(`/discord/accounts/${editingTokenName.value}`, { method: 'PUT', body: { token: editingToken.value } });
+        editTokenDialog.value = false; ElMessage.success('Token 已更新'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    function openAddGuild(accName) { addGuildAccountName.value = accName; newGuildId.value = ''; addGuildDialog.value = true; }
+    async function createGuild() {
+      if (!newGuildId.value.trim()) return ElMessage.warning('请输入服务器 ID');
+      try {
+        await api(`/discord/accounts/${addGuildAccountName.value}/guilds`, { method: 'POST', body: JSON.stringify({ guildId: newGuildId.value.trim() }) });
+        addGuildDialog.value = false; ElMessage.success('服务器已添加'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+    async function deleteGuild(accName, guildId) {
+      try {
+        await ElMessageBox.confirm('确定删除此服务器配置？', '确认', { type: 'warning' });
+        await api(`/discord/accounts/${accName}/guilds/${guildId}`, { method: 'DELETE' }); ElMessage.success('已删除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+    async function updateGuild(accName, guildId, updates) {
+      try { await api(`/discord/accounts/${accName}/guilds/${guildId}`, { method: 'PUT', body: updates }); ElMessage.success('已更新'); loadAll(); }
+      catch (e) { ElMessage.error(e.message); }
+    }
+
+    function openAddChannel(accName, guildId) { addChannelAccountName.value = accName; addChannelGuildId.value = guildId; newChannelId.value = ''; newChannelAllow.value = true; newChannelRequireMention.value = true; addChannelDialog.value = true; }
+    async function createChannel() {
+      if (!newChannelId.value.trim()) return ElMessage.warning('请输入频道 ID');
+      try {
+        await api(`/discord/accounts/${addChannelAccountName.value}/guilds/${addChannelGuildId.value}/channels`, {
+          method: 'POST', body: JSON.stringify({ channelId: newChannelId.value.trim(), allow: newChannelAllow.value, requireMention: newChannelRequireMention.value })
+        });
+        addChannelDialog.value = false; ElMessage.success('频道已添加'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+    async function deleteChannel(accName, guildId, channelId) {
+      try {
+        await ElMessageBox.confirm('确定删除此频道？', '确认', { type: 'warning' });
+        await api(`/discord/accounts/${accName}/guilds/${guildId}/channels/${channelId}`, { method: 'DELETE' }); ElMessage.success('已删除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+
+    function openAddUser(accName, guildId) { addUserAccountName.value = accName; addUserGuildId.value = guildId; newUserId.value = ''; addUserDialog.value = true; }
+    async function createUser() {
+      if (!newUserId.value.trim()) return ElMessage.warning('请输入用户 ID');
+      try {
+        await api(`/discord/accounts/${addUserAccountName.value}/guilds/${addUserGuildId.value}/users`, { method: 'POST', body: JSON.stringify({ userId: newUserId.value.trim() }) });
+        addUserDialog.value = false; ElMessage.success('用户已添加'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+    async function deleteUser(accName, guildId, userId) {
+      try {
+        await ElMessageBox.confirm('确定移除此用户？', '确认', { type: 'warning' });
+        await api(`/discord/accounts/${accName}/guilds/${guildId}/users/${userId}`, { method: 'DELETE' }); ElMessage.success('已移除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+
+    // === Bindings (top-level array) ===
+    function getBindingAgent(accountId) {
+      const b = bindings.value.find(b => b.match?.accountId === accountId);
+      return b ? b.agentId : '';
+    }
+    function setBindingAgent(accountId, agentId) {
+      if (!agentId) {
+        const idx = bindings.value.findIndex(b => b.match?.accountId === accountId);
+        if (idx !== -1) removeBinding(idx);
+        return;
+      }
+      const existing = bindings.value.findIndex(b => b.match?.accountId === accountId);
+      const doCreate = () => {
+        api('/bindings', { method: 'POST', body: JSON.stringify({ agentId, channel: 'discord', accountId }) })
+          .then(() => { ElMessage.success('绑定已创建'); loadAll(); })
+          .catch(e => ElMessage.error('绑定失败: ' + e.message));
+      };
+      if (existing !== -1) {
+        bindings.value[existing].agentId = agentId;
+        api(`/bindings/${existing}`, { method: 'DELETE' })
+          .then(doCreate)
+          .catch(e => ElMessage.error('删除旧绑定失败: ' + e.message));
+      } else {
+        doCreate();
+      }
+    }
+    function showAddBinding() {
+      newBinding.agentId = agents.value[0]?.id || '';
+      newBinding.accountId = discordAccountNames.value[0] || '';
+      addBindingDialog.value = true;
+    }
+    async function addBinding() {
+      try {
+        await api('/bindings', { method: 'POST', body: JSON.stringify({ agentId: newBinding.agentId, channel: 'discord', accountId: newBinding.accountId }) });
+        addBindingDialog.value = false; ElMessage.success('绑定已添加'); loadAll();
+      } catch (e) { ElMessage.error(e.message); }
+    }
+    async function removeBinding(index) {
+      try {
+        await ElMessageBox.confirm('确定删除此绑定？', '确认', { type: 'warning' });
+        await api(`/bindings/${index}`, { method: 'DELETE' }); ElMessage.success('已删除'); loadAll();
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+
+    // === Hooks ===
+    async function toggleHook(name, enabled) {
+      try { await api('/hooks', { method: 'PUT', body: { entries: { [name]: { enabled } } } }); ElMessage.success('已更新'); loadAll(); }
+      catch (e) { ElMessage.error(e.message); }
+    }
+    async function saveHooks(updates) {
+      try { await api('/hooks', { method: 'PUT', body: updates }); ElMessage.success('已更新'); loadAll(); }
+      catch (e) { ElMessage.error(e.message); }
+    }
+
+    // === Gateway ===
+    async function gatewayAction(action) {
+      try {
+        const label = { start:'启动', stop:'停止', restart:'重启' }[action];
+        await ElMessageBox.confirm(`确定${label} Gateway？`, '确认', { type: 'warning' });
+        ElMessage.info(`${label}中...`);
+        await api('/gateway/' + action, { method: 'POST' });
+        ElMessage.success(`${label}成功`); setTimeout(loadAll, 2000);
+      } catch (e) { if (e !== 'cancel') ElMessage.error(e.message); }
+    }
+    function refreshGateway() {
+      api('/gateway/status').then(gw => { gatewayInfo.value = gw; gatewayStatus.value = gw.status || 'unknown'; }).catch(() => {});
+    }
+
+    // === Settings ===
+    async function saveSettings() {
+      try {
+        await api('/settings', { method: 'PUT', body: { ...settings } });
+        ElMessage.success('设置已保存');
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    // === System Status ===
+    async function loadSystemStatus() {
+      systemStatusLoading.value = true;
+      try { systemStatus.value = await api('/system/status'); } catch (e) { ElMessage.error('获取状态失败: ' + e.message); }
+      systemStatusLoading.value = false;
+    }
+    function formatSystemStatus(data) {
+      return JSON.stringify(data, null, 2);
+    }
+
+    // === Skills ===
+    async function loadSkills() {
+      skillsLoading.value = true;
+      try {
+        const sk = await api('/skills');
+        installedSkills.value = Array.isArray(sk) ? sk : (sk?.skills || sk?.installed || []);
+      } catch (e) { ElMessage.error('加载 Skills 失败: ' + e.message); }
+      skillsLoading.value = false;
+    }
+    function showInstallDialog() { installSlug.value = ''; installVersion.value = ''; installDialogVisible.value = true; }
+    async function installSkill(slug) {
+      if (!slug) return ElMessage.warning('请输入 Skill slug');
+      skillInstallingId.value = slug;
+      try {
+        await api('/skills/install', { method: 'POST', body: { slug, version: installVersion.value || undefined } });
+        ElMessage.success('安装成功'); installDialogVisible.value = false; loadSkills();
+      } catch (e) { ElMessage.error('安装失败: ' + e.message); }
+      skillInstallingId.value = '';
+    }
+    async function updateSingleSkill(slug) {
+      skillUpdatingId.value = slug;
+      try { await api('/skills/update', { method: 'POST', body: { slug } }); ElMessage.success('更新成功'); loadSkills(); }
+      catch (e) { ElMessage.error('更新失败: ' + e.message); }
+      skillUpdatingId.value = '';
+    }
+    async function updateAllSkills() {
+      skillsUpdating.value = true;
+      try { await api('/skills/update', { method: 'POST', body: {} }); ElMessage.success('全部更新成功'); loadSkills(); }
+      catch (e) { ElMessage.error('更新失败: ' + e.message); }
+      skillsUpdating.value = false;
+    }
+    async function searchSkills() {
+      if (!skillSearchQuery.value.trim()) return;
+      skillSearchLoading.value = true;
+      try {
+        const r = await api('/skills/search?q=' + encodeURIComponent(skillSearchQuery.value));
+        skillSearchResults.value = Array.isArray(r) ? r : (r?.skills || r?.results || []);
+        if (skillSearchResults.value.length === 0) ElMessage.info('未找到相关 Skill');
+      } catch (e) { ElMessage.error('搜索失败: ' + e.message); }
+      skillSearchLoading.value = false;
+    }
+
+    // Init
     onMounted(async () => {
       try {
-        const res = await fetch('/api/auth/check');
-        const data = await res.json();
-        if (data.authenticated) {
-          authenticated.value = true;
-          loadData();
-        }
-      } catch (e) {}
+        const r = await fetch('/api/auth/check');
+        const d = await r.json();
+        if (d.authenticated) { authenticated.value = true; loadAll(); }
+      } catch {}
     });
 
-    const discordAccountCount = computed(() => Object.keys(discord.accounts || {}).length);
-
     return {
-      authenticated, password, loginLoading, loginError,
-      currentPage, config, gatewayStatus, gatewayInfo, agents, bindings, discord,
-      login, logout, gatewayAction, discordAccountCount
+      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed, windowWidth,
+      agents, agentStatus, systemStatus, systemStatusLoading, installedSkills, skillsLoading, skillsUpdating, skillUpdatingId, skillSearchQuery, skillSearchResults, skillSearchLoading, skillInstallingId, installDialogVisible, installSlug, installVersion, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
+      labels, guildLabels, channelLabels,
+      editorAgent, editorFile, editorContent, renderedMarkdown,
+      createAgentDialog, newAgentId,
+      addAccountDialog, newAccountName, newAccountToken, accountLoading,
+      editTokenDialog, editingTokenName, editingToken,
+      addGuildDialog, newGuildId, addGuildAccountName,
+      addChannelDialog, newChannelId, newChannelAllow, newChannelRequireMention, addChannelAccountName, addChannelGuildId,
+      addUserDialog, newUserId, addUserAccountName, addUserGuildId,
+      addBindingDialog, newBinding,
+      discordAccountCount, discordAccountNames, bindingByGuild, unboundAccounts, hooksList, pageTitle, configItems,
+      maskToken, displayName, timeAgo, saveGuildLabel, saveChannelLabel,
+      login, logout, loadAll,
+      showCreateAgent, createAgent, deleteAgent, editAgent,
+      loadFile, saveFile,
+      saveDiscordGlobal, openAddAccount, createAccount, deleteAccount, updateAccount,
+      openEditToken, saveEditToken,
+      openAddGuild, createGuild, deleteGuild, updateGuild,
+      openAddChannel, createChannel, deleteChannel,
+      openAddUser, createUser, deleteUser,
+      showAddBinding, addBinding, removeBinding, getBindingAgent, setBindingAgent,
+      toggleHook, saveHooks,
+      loadSystemStatus, formatSystemStatus, loadSkills, showInstallDialog, installSkill, updateSingleSkill, updateAllSkills, searchSkills,
+      gatewayAction, refreshGateway,
+      saveSettings
     };
-  },
-  template: `
-    <div v-if="!authenticated" class="login-container">
-      <div class="login-box">
-        <div class="logo">🦞</div>
-        <h1>OpenClaw 管理后台</h1>
-        <p>请输入管理密码登录</p>
-        <el-input v-model="password" type="password" placeholder="管理密码" show-password size="large" 
-          @keyup.enter="login" style="margin-bottom:16px">
-          <template #prefix><i class="fas fa-key"></i></template>
-        </el-input>
-        <el-button type="primary" size="large" :loading="loginLoading" @click="login" style="width:100%">登录</el-button>
-        <div v-if="loginError" style="color:#f56c6c;margin-top:12px">{{ loginError }}</div>
-      </div>
-    </div>
-    <div v-else class="layout">
-      <div class="sidebar">
-        <div class="sidebar-header">🦞 OpenClaw</div>
-        <div class="sidebar-nav">
-          <div class="nav-item" :class="{active:currentPage==='dashboard'}" @click="currentPage='dashboard'">
-            <i class="fas fa-tachometer-alt"></i> 仪表盘
-          </div>
-          <div class="nav-item" :class="{active:currentPage==='discord'}" @click="currentPage='discord'">
-            <i class="fab fa-discord"></i> Discord
-          </div>
-          <div class="nav-item" :class="{active:currentPage==='gateway'}" @click="currentPage='gateway'">
-            <i class="fas fa-server"></i> Gateway
-          </div>
-        </div>
-      </div>
-      <div class="main">
-        <div class="topbar">
-          <span>OpenClaw Admin</span>
-          <el-button text @click="logout"><i class="fas fa-sign-out-alt"></i> 退出</el-button>
-        </div>
-        <div class="content">
-          <!-- Dashboard -->
-          <div v-if="currentPage==='dashboard'">
-            <div class="stat-row" style="margin-bottom:20px">
-              <div class="stat-card">
-                <div class="label">Agent</div>
-                <div class="value">{{ agents.length }}</div>
-              </div>
-              <div class="stat-card" style="background:linear-gradient(135deg,#1b5e20,#2e7d32)">
-                <div class="label">Gateway</div>
-                <div class="value" style="font-size:18px">{{ gatewayStatus==='running'?'运行中':gatewayStatus==='stopped'?'已停止':'未知' }}</div>
-              </div>
-              <div class="stat-card" style="background:linear-gradient(135deg,#4a148c,#6a1b9a)">
-                <div class="label">Discord</div>
-                <div class="value">{{ discordAccountCount }}</div>
-              </div>
-              <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
-                <div class="label">绑定</div>
-                <div class="value">{{ bindings.length }}</div>
-              </div>
-            </div>
-            <div class="card">
-              <h3>配置概览</h3>
-              <div class="info-row"><span class="info-label">Gateway 端口</span><span>{{ config.gateway?.port || '—' }}</span></div>
-              <div class="info-row"><span class="info-label">Gateway 模式</span><span>{{ config.gateway?.mode || '—' }}</span></div>
-              <div class="info-row"><span class="info-label">默认模型</span><span>{{ config.agents?.defaults?.model?.primary || '—' }}</span></div>
-              <div class="info-row"><span class="info-label">工具权限</span><span>{{ config.tools?.profile || '—' }}</span></div>
-            </div>
-          </div>
-          <!-- Discord -->
-          <div v-if="currentPage==='discord'">
-            <div class="card">
-              <h3><i class="fab fa-discord"></i> Discord Bot 管理</h3>
-              <div class="info-row"><span class="info-label">启用</span><span>{{ discord.enabled ? '✅' : '❌' }}</span></div>
-              <div class="info-row"><span class="info-label">allowBots</span><span>{{ discord.allowBots ? '✅' : '❌' }}</span></div>
-              <div class="info-row"><span class="info-label">账号数量</span><span>{{ discordAccountCount }}</span></div>
-            </div>
-          </div>
-          <!-- Gateway -->
-          <div v-if="currentPage==='gateway'">
-            <div class="card">
-              <h3><i class="fas fa-server"></i> Gateway 管理</h3>
-              <div style="margin-bottom:16px;display:flex;gap:8px">
-                <el-button type="success" @click="gatewayAction('start')"><i class="fas fa-play"></i> 启动</el-button>
-                <el-button type="danger" @click="gatewayAction('stop')"><i class="fas fa-stop"></i> 停止</el-button>
-                <el-button type="warning" @click="gatewayAction('restart')"><i class="fas fa-redo"></i> 重启</el-button>
-              </div>
-              <div class="info-row"><span class="info-label">状态</span><span>{{ gatewayStatus }}</span></div>
-              <div class="info-row"><span class="info-label">PID</span><span>{{ gatewayInfo.pid || '—' }}</span></div>
-              <div class="info-row"><span class="info-label">端口</span><span>{{ gatewayInfo.port || '—' }}</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `
+  }
 });
 
 app.use(ElementPlus);
 app.mount('#app');
-}
+document.getElementById('loading')?.remove();
 </script>
 </body>
 </html>
