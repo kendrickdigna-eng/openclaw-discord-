@@ -508,13 +508,22 @@
           </div>
 
           <!-- Per Account -->
-          <div v-for="(acc, accName) in discordGlobal.accounts" :key="accName" class="account-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <div class="card-header" style="margin-bottom:0"><i class="fab fa-discord"></i> {{ accName }}</div>
-              <el-button text type="danger" size="small" @click="deleteAccount(accName)"><i class="fas fa-trash"></i> 删除</el-button>
-            </div>
+          <el-collapse v-model="expandedAccounts" accordion>
+          <el-collapse-item v-for="(acc, accName) in discordGlobal.accounts" :key="accName" :name="accName">
+            <template #title>
+              <div style="display:flex;align-items:center;gap:12px;flex:1;justify-content:space-between">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:18px;color:#5865F2"><i class="fab fa-discord"></i></span>
+                  <span style="font-weight:600;color:#e0e0e0">{{ accName }}</span>
+                  <el-tag size="small" :type="getBindingAgent(accName) ? 'success' : 'info'">{{ getBindingAgent(accName) || '未绑定' }}</el-tag>
+                  <el-tag size="small" type="info">{{ Object.keys(acc.guilds || {}).length }} 服务器</el-tag>
+                </div>
+                <el-button text type="danger" size="small" @click.stop="deleteAccount(accName)"><i class="fas fa-trash"></i></el-button>
+              </div>
+            </template>
 
-            <el-form label-position="left" label-width="120px" style="max-width:600px">
+            <div style="padding:0 8px 8px">
+              <el-form label-position="left" label-width="120px" style="max-width:600px">
               <el-form-item label="Token">
                 <div style="display:flex;gap:8px;flex:1">
                   <el-input :model-value="maskToken(acc.token)" disabled style="flex:1" />
@@ -543,61 +552,72 @@
               </el-form-item>
             </el-form>
 
-            <!-- Guilds -->
-            <div style="margin-top:12px">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <div class="section-title"><i class="fas fa-server"></i> 服务器 (Guilds)</div>
-                <el-button type="primary" size="small" @click="openAddGuild(accName)"><i class="fas fa-plus"></i> 添加服务器</el-button>
-              </div>
-
-              <div v-if="!acc.guilds || Object.keys(acc.guilds).length === 0" style="color:#666;font-size:14px;padding:12px 0">暂无服务器配置</div>
-
-              <div v-for="(guild, guildId) in (acc.guilds || {})" :key="guildId" class="guild-block">
+              <!-- Guilds -->
+              <div style="margin-top:12px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                  <div style="font-weight:600;color:#e0e0e0"><i class="fas fa-server"></i> {{ guildId }}</div>
-                  <el-button text type="danger" size="small" @click="deleteGuild(accName, guildId)"><i class="fas fa-times"></i></el-button>
+                  <div class="section-title"><i class="fas fa-server"></i> 服务器 (Guilds)</div>
+                  <el-button type="primary" size="small" @click="openAddGuild(accName)"><i class="fas fa-plus"></i> 添加服务器</el-button>
                 </div>
 
-                <el-form label-position="left" label-width="140px" style="margin-top:8px">
-                  <el-form-item label="requireMention">
-                    <el-switch :model-value="guild.requireMention" @change="v => updateGuild(accName, guildId, {requireMention:v})" />
-                  </el-form-item>
-                </el-form>
+                <div v-if="!acc.guilds || Object.keys(acc.guilds).length === 0" style="color:#666;font-size:14px;padding:12px 0">暂无服务器配置</div>
 
-                <!-- Channels -->
-                <div style="margin-top:8px">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div class="section-title" style="font-size:13px"><i class="fas fa-hashtag"></i> 频道</div>
-                    <el-button type="primary" size="small" @click="openAddChannel(accName, guildId)"><i class="fas fa-plus"></i></el-button>
-                  </div>
-                  <div v-if="!guild.channels || Object.keys(guild.channels).length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无频道</div>
-                  <div v-for="(ch, chId) in (guild.channels || {})" :key="chId" class="channel-block">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                      <span style="color:#bbb;font-size:13px"><i class="fas fa-hashtag"></i> {{ chId }}</span>
-                      <div style="display:flex;gap:4px;align-items:center">
-                        <el-tag v-if="ch.allow" size="small" type="success">允许</el-tag>
-                        <el-tag v-if="ch.requireMention" size="small" type="warning">需@</el-tag>
-                        <el-button text type="danger" size="small" @click="deleteChannel(accName, guildId, chId)"><i class="fas fa-times"></i></el-button>
+                <el-collapse v-model="expandedGuilds">
+                <el-collapse-item v-for="(guild, guildId) in (acc.guilds || {})" :key="guildId" :name="accName+'_'+guildId">
+                  <template #title>
+                    <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:space-between">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="font-weight:600;color:#e0e0e0"><i class="fas fa-server"></i> {{ guildId }}</span>
+                        <el-tag size="small" type="info">{{ Object.keys(guild.channels || {}).length }} 频道 · {{ (guild.users || []).length }} 白名单</el-tag>
+                      </div>
+                      <el-button text type="danger" size="small" @click.stop="deleteGuild(accName, guildId)"><i class="fas fa-times"></i></el-button>
+                    </div>
+                  </template>
+
+                  <div style="padding:0 8px 8px">
+                    <el-form label-position="left" label-width="140px">
+                      <el-form-item label="requireMention">
+                        <el-switch :model-value="guild.requireMention" @change="v => updateGuild(accName, guildId, {requireMention:v})" />
+                      </el-form-item>
+                    </el-form>
+
+                    <!-- Channels -->
+                    <div style="margin-top:8px">
+                      <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div class="section-title" style="font-size:13px"><i class="fas fa-hashtag"></i> 频道</div>
+                        <el-button type="primary" size="small" @click="openAddChannel(accName, guildId)"><i class="fas fa-plus"></i></el-button>
+                      </div>
+                      <div v-if="!guild.channels || Object.keys(guild.channels).length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无频道</div>
+                      <div v-for="(ch, chId) in (guild.channels || {})" :key="chId" class="channel-block">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                          <span style="color:#bbb;font-size:13px"><i class="fas fa-hashtag"></i> {{ chId }}</span>
+                          <div style="display:flex;gap:4px;align-items:center">
+                            <el-tag v-if="ch.allow" size="small" type="success">允许</el-tag>
+                            <el-tag v-if="ch.requireMention" size="small" type="warning">需@</el-tag>
+                            <el-button text type="danger" size="small" @click="deleteChannel(accName, guildId, chId)"><i class="fas fa-times"></i></el-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Users -->
+                    <div style="margin-top:8px">
+                      <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div class="section-title" style="font-size:13px"><i class="fas fa-user"></i> 用户白名单</div>
+                        <el-button type="primary" size="small" @click="openAddUser(accName, guildId)"><i class="fas fa-plus"></i></el-button>
+                      </div>
+                      <div v-if="!guild.users || guild.users.length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无白名单</div>
+                      <div v-for="uid in (guild.users || [])" :key="uid" class="channel-block" style="display:flex;justify-content:space-between;align-items:center">
+                        <span style="color:#bbb;font-size:13px"><i class="fas fa-user"></i> {{ uid }}</span>
+                        <el-button text type="danger" size="small" @click="deleteUser(accName, guildId, uid)"><i class="fas fa-times"></i></el-button>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                <!-- Users -->
-                <div style="margin-top:8px">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div class="section-title" style="font-size:13px"><i class="fas fa-user"></i> 用户白名单</div>
-                    <el-button type="primary" size="small" @click="openAddUser(accName, guildId)"><i class="fas fa-plus"></i></el-button>
-                  </div>
-                  <div v-if="!guild.users || guild.users.length === 0" style="color:#666;font-size:13px;padding:4px 0">暂无白名单</div>
-                  <div v-for="uid in (guild.users || [])" :key="uid" class="channel-block" style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="color:#bbb;font-size:13px"><i class="fas fa-user"></i> {{ uid }}</span>
-                    <el-button text type="danger" size="small" @click="deleteUser(accName, guildId, uid)"><i class="fas fa-times"></i></el-button>
-                  </div>
-                </div>
+                </el-collapse-item>
+                </el-collapse>
               </div>
             </div>
-          </div>
+          </el-collapse-item>
+          </el-collapse>
 
           <!-- Dialogs -->
           <el-dialog v-model="addAccountDialog" title="添加 Discord Bot 账号" width="500px" :close-on-click-modal="false">
@@ -975,6 +995,8 @@ const app = createApp({
     const loginToken = ref('');
     const loginLoading = ref(false);
     const loginError = ref('');
+    const expandedAccounts = ref([]);
+    const expandedGuilds = ref([]);
     const currentPage = ref('dashboard');
     const sidebarCollapsed = ref(false);
 
@@ -1644,7 +1666,7 @@ ${data.description || '无描述'}
     });
 
     return {
-      authenticated, loginToken, loginLoading, loginError, currentPage, sidebarCollapsed,
+      authenticated, loginToken, loginLoading, loginError, expandedAccounts, expandedGuilds, currentPage, sidebarCollapsed,
       agents, agentStatus, guildGroups, expandedGuilds, bindings, config, gatewayStatus, gatewayInfo, hooksData, settings, discordGlobal,
       labels, guildLabels, channelLabels,
       // Skills
