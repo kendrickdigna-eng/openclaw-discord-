@@ -351,20 +351,55 @@
                     </el-select>
                   </el-form-item>
                 </el-form>
-                <div style="margin-top:12px;color:#888">
-                  <i class="fas fa-info-circle"></i> 心跳间隔决定 Agent 自动检查任务的频率
+                
+                <!-- 高级设置 -->
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2a2a4a">
+                  <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:#4fc3f7">高级设置</div>
+                  <el-form label-position="left" label-width="120px" style="max-width:500px">
+                    <el-form-item label="心跳目标">
+                      <el-select v-model="agentHeartbeat.target" :disabled="!agentHeartbeat.enabled" @change="saveAgentHeartbeat" style="width:150px">
+                        <el-option label="最近会话" value="last" />
+                        <el-option label="无" value="" />
+                      </el-select>
+                      <div style="font-size:12px;color:#888;margin-top:4px">心跳发送到哪个会话</div>
+                    </el-form-item>
+                    <el-form-item label="轻量上下文">
+                      <el-switch v-model="agentHeartbeat.lightContext" :disabled="!agentHeartbeat.enabled" @change="saveAgentHeartbeat" />
+                      <div style="font-size:12px;color:#888;margin-top:4px">启用可节省token消耗</div>
+                    </el-form-item>
+                  </el-form>
                 </div>
                 
-                <!-- HEARTBEAT.md 文档（可编辑） -->
+                <!-- 活跃时段 -->
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #2a2a4a">
+                  <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:#4fc3f7">活跃时段（可选）</div>
+                  <el-form label-position="left" label-width="120px" style="max-width:500px">
+                    <el-form-item label="启用活跃时段">
+                      <el-switch v-model="agentHeartbeat.useActiveHours" :disabled="!agentHeartbeat.enabled" @change="saveAgentHeartbeat" />
+                    </el-form-item>
+                    <el-form-item label="开始时间" v-if="agentHeartbeat.useActiveHours">
+                      <el-time-select v-model="agentHeartbeat.activeHoursStart" :disabled="!agentHeartbeat.enabled" start="00:00" step="00:30" end="23:30" placeholder="开始时间" @change="saveAgentHeartbeat" />
+                    </el-form-item>
+                    <el-form-item label="结束时间" v-if="agentHeartbeat.useActiveHours">
+                      <el-time-select v-model="agentHeartbeat.activeHoursEnd" :disabled="!agentHeartbeat.enabled" start="00:00" step="00:30" end="23:30" placeholder="结束时间" @change="saveAgentHeartbeat" />
+                    </el-form-item>
+                  </el-form>
+                  <div style="font-size:12px;color:#888;margin-top:8px">💡 只在这个时间段内发送心跳，不配置则全天候运行</div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div style="margin-top:16px;display:flex;gap:12px">
+                  <el-button type="primary" @click="saveAgentHeartbeat" :disabled="!agentHeartbeat.enabled"><i class="fas fa-save"></i> 保存配置</el-button>
+                  <el-button @click="triggerHeartbeat" :disabled="!agentHeartbeat.enabled"><i class="fas fa-play"></i> 立即触发心跳</el-button>
+                </div>
+                
+                <!-- HEARTBEAT.md 文档 -->
                 <div v-if="agentDetail.heartbeatDoc !== undefined" style="margin-top:24px">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                    <div style="font-size:14px;font-weight:600;color:#e0e0e0">
-                      <i class="fas fa-file-alt"></i> HEARTBEAT.md
-                    </div>
+                    <div style="font-size:14px;font-weight:600;color:#e0e0e0"><i class="fas fa-file-alt"></i> HEARTBEAT.md</div>
                     <el-button size="small" type="primary" @click="saveHeartbeatDoc"><i class="fas fa-save"></i> 保存</el-button>
                   </div>
-                  <el-input v-model="agentDetail.heartbeatDoc" type="textarea" :rows="10" 
-                    style="--el-input-bg-color:#141414;--el-input-border-color:#2a2a4a;--el-input-text-color:#aaa;font-family:monospace" />
+                  <el-input v-model="agentDetail.heartbeatDoc" type="textarea" :rows="10" style="--el-input-bg-color:#141414;--el-input-border-color:#2a2a4a;--el-input-text-color:#aaa;font-family:monospace" />
                 </div>
               </div>
             </el-tab-pane>
@@ -975,7 +1010,15 @@ const app = createApp({
     const detailFileContent = ref('');
     const agentLogs = ref([]);
     const agentSessions = ref([]);
-    const agentHeartbeat = reactive({ enabled: false, every: '30m' });
+    const agentHeartbeat = reactive({ 
+      enabled: false, 
+      every: '30m',
+      target: 'last',
+      lightContext: false,
+      useActiveHours: false,
+      activeHoursStart: '07:00',
+      activeHoursEnd: '23:00'
+    });
     const newDetailBinding = ref('');
     const newSkillName = ref('');
 
@@ -1262,8 +1305,25 @@ const app = createApp({
 
     async function saveAgentHeartbeat() {
       try {
-        await api(`/agents/${currentAgentId.value}/heartbeat`, { method: 'PUT', body: agentHeartbeat });
+        const body = {
+          enabled: agentHeartbeat.enabled,
+          every: agentHeartbeat.every,
+          target: agentHeartbeat.target || 'last',
+          lightContext: agentHeartbeat.lightContext || false,
+          activeHours: agentHeartbeat.useActiveHours ? {
+            start: agentHeartbeat.activeHoursStart,
+            end: agentHeartbeat.activeHoursEnd
+          } : null
+        };
+        await api(`/agents/${currentAgentId.value}/heartbeat`, { method: 'PUT', body });
         ElMessage.success('心跳配置已保存');
+      } catch (e) { ElMessage.error(e.message); }
+    }
+
+    async function triggerHeartbeat() {
+      try {
+        await api(`/agents/${currentAgentId.value}/heartbeat/trigger`, { method: 'POST' });
+        ElMessage.success('心跳已触发');
       } catch (e) { ElMessage.error(e.message); }
     }
 
@@ -1592,7 +1652,7 @@ ${data.description || '无描述'}
       loadSkills, toggleSkill, showSkillDetail, searchSkills, installSkill, deleteSkill,
       // Agent Detail
       currentAgentId, agentDetail, detailFile, detailFileContent, agentLogs, agentSessions, agentHeartbeat, newDetailBinding, newSkillName,
-      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, saveHeartbeatDoc, updateDetailBinding, enableSkill, disableSkill,
+      showAgentDetail, loadAgentDetail, loadDetailFile, saveDetailFile, loadAgentLogs, loadAgentSessions, resetAgentSessions, saveAgentHeartbeat, triggerHeartbeat, saveHeartbeatDoc, updateDetailBinding, enableSkill, disableSkill,
       // Editor
       editorAgent, editorFile, editorContent, renderedMarkdown,
       createAgentDialog, newAgentId,

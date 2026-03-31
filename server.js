@@ -495,8 +495,16 @@ app.get('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
     const config = readConfig();
-    const heartbeat = (config.heartbeat?.agents || []).find(a => a.agentId === id);
-    res.json(heartbeat || { agentId: id, enabled: false, every: 'disabled' });
+    const heartbeat = (config.heartbeat?.agents || []).find(a => a.agentId === id) || {};
+    res.json({
+      agentId: id,
+      enabled: heartbeat.enabled || false,
+      every: heartbeat.every || 'disabled',
+      everyMs: heartbeat.everyMs || null,
+      target: heartbeat.target || 'last',
+      lightContext: heartbeat.lightContext || false,
+      activeHours: heartbeat.activeHours || null
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -505,7 +513,7 @@ app.get('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
 app.put('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const { enabled, every } = req.body;
+    const { enabled, every, target, lightContext, activeHours } = req.body;
     const config = readConfig();
     if (!config.heartbeat) config.heartbeat = { agents: [] };
     if (!config.heartbeat.agents) config.heartbeat.agents = [];
@@ -515,7 +523,10 @@ app.put('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
       agentId: id,
       enabled: enabled === true,
       every: enabled ? (every || '30m') : 'disabled',
-      everyMs: enabled ? parseInterval(every || '30m') : null
+      everyMs: enabled ? parseInterval(every || '30m') : null,
+      target: target || 'last',
+      lightContext: lightContext === true,
+      activeHours: activeHours || null
     };
     
     if (existing >= 0) {
@@ -526,6 +537,20 @@ app.put('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
     
     writeConfig(config);
     res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 触发心跳
+app.post('/api/agents/:id/heartbeat/trigger', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    execSync(`openclaw system heartbeat last --agent ${id} 2>&1`, { 
+      timeout: 30000,
+      encoding: 'utf8'
+    });
+    res.json({ success: true, message: '心跳已触发' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
