@@ -546,11 +546,11 @@ app.put('/api/agents/:id/heartbeat', requireAuth, (req, res) => {
 app.post('/api/agents/:id/heartbeat/trigger', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
-    execSync(`openclaw system heartbeat last --agent ${id} 2>&1`, { 
+    execSync(`openclaw system event --text "Manual heartbeat trigger" --mode now --json 2>&1`, { 
       timeout: 30000,
       encoding: 'utf8'
     });
-    res.json({ success: true, message: '心跳已触发' });
+    res.json({ success: true, message: '心跳事件已触发' });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
